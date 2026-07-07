@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard de Presupuesto Mensual</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#121a33;
+      --card2:#0f1730;
+      --text:#e8ecff;
+      --muted:#aab3da;
+      --accent:#7c5cff;
+      --good:#31d0aa;
+      --warn:#ffcc66;
+      --bad:#ff5c7a;
+      --border: rgba(255,255,255,.08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 700px at 10% 0%, rgba(124,92,255,.20), transparent 50%),
+                  radial-gradient(900px 600px at 100% 10%, rgba(49,208,170,.12), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    header{
+      padding:24px 20px 8px;
+      max-width:1100px;
+      margin:0 auto;
+      display:flex;
+      gap:14px;
+      align-items:flex-start;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    h1{ margin:0; font-size:20px; letter-spacing:.2px; }
+    .subtitle{color:var(--muted); font-size:13px; margin-top:6px}
+    .chiprow{display:flex; gap:8px; flex-wrap:wrap}
+    .chip{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    main{
+      max-width:1100px;
+      margin:0 auto;
+      padding:14px 20px 30px;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+    }
+    @media (max-width: 980px){ main{grid-template-columns: 1fr} }
+    .card{
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border-radius:16px;
+      padding:14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.25);
+    }
+    .card h2{
+      margin:0 0 10px;
+      font-size:14px;
+      color:var(--muted);
+      font-weight:600;
+      letter-spacing:.2px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    @media (max-width: 640px){ .grid2{grid-template-columns:1fr} }
+
+    .kpi{
+      background: rgba(0,0,0,.20);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px;
+    }
+    .kpi .label{font-size:12px; color:var(--muted)}
+    .kpi .value{font-size:20px; margin-top:6px; font-weight:700}
+    .kpi .hint{font-size:12px; color:var(--muted); margin-top:6px}
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:8px 0;
+      border-bottom:1px dashed rgba(255,255,255,.08);
+    }
+    .row:last-child{border-bottom:none}
+    .row .name{color:var(--text); font-size:13px}
+    .row .muted{color:var(--muted); font-size:12px}
+    input[type="number"]{
+      width:140px;
+      max-width:45vw;
+      padding:9px 10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      outline:none;
+    }
+    input[type="number"]:focus{border-color: rgba(124,92,255,.55); box-shadow: 0 0 0 3px rgba(124,92,255,.15)}
+    .btnbar{display:flex; gap:8px; flex-wrap:wrap}
+    button{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      padding:9px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      font-size:12px;
+    }
+    button:hover{border-color: rgba(255,255,255,.18)}
+    .danger{border-color: rgba(255,92,122,.35)}
+    .danger:hover{border-color: rgba(255,92,122,.55)}
+    .progress{
+      height:10px;
+      width:100%;
+      background: rgba(255,255,255,.06);
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .progress > div{height:100%; width:0%; background: var(--accent)}
+    .progress.good > div{background: var(--good)}
+    .progress.warn > div{background: var(--warn)}
+    .progress.bad > div{background: var(--bad)}
+    .small{font-size:12px; color:var(--muted)}
+    .note{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.18);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+    }
+    .twoCols{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    @media (max-width: 520px){ .twoCols{grid-template-columns:1fr} }
+    .tag{
+      font-size:11px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      color:var(--muted);
+      background: rgba(255,255,255,.04);
+    }
+    .rightHeader{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  </style>
+</head>
+
+<body>
+<header>
+  <div>
+    <h1>💰 Presupuesto Mensual — Demian & Ana Pau</h1>
+    <div class="subtitle">Dashboard interactivo (edita los valores y todo se recalcula).</div>
+  </div>
+  <div class="chiprow">
+    <div class="chip">Regla: división 75% / 25%</div>
+    <div class="chip">Meta fondo: 50,000</div>
+    <div class="chip">Inversión mínima: 30% del restante</div>
+  </div>
+</header>
+
+<main>
+  <!-- COLUMNA IZQUIERDA -->
+  <section class="card">
+    <h2>
+      Resumen
+      <span class="rightHeader">
+        <span class="tag" id="savingTag">Tasa de ahorro: —</span>
+        <span class="tag" id="statusTag">Estado: —</span>
+      </span>
+    </h2>
+
+    <div class="grid2">
+      <div class="kpi">
+        <div class="label">Ingresos totales</div>
+        <div class="value" id="kpiIncome">$0</div>
+        <div class="hint small">Demian + Ana Pau</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Gastos totales</div>
+        <div class="value" id="kpiExpenses">$0</div>
+        <div class="hint small">Fijos + suscripciones + personal + diversión</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Restante (Ahorro/Inversión)</div>
+        <div class="value" id="kpiRemaining">$0</div>
+        <div class="hint small">Ingresos − Gastos</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Objetivo semanal (referencia)</div>
+        <div class="value" id="kpiWeeklyTarget">$0</div>
+        <div class="hint small">Referencia: 6,000 / semana</div>
+      </div>
+    </div>
+
+    <div class="note">
+      Tip: Los valores vienen precargados con tus números (MXN). Cambia lo que quieras y se actualiza la división proporcional + inversión mínima.
+    </div>
+
+    <div style="height:12px"></div>
+
+    <div class="twoCols">
+      <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
+        <h2>📊 Ingresos</h2>
+
+        <div class="row">
+          <div>
+            <div class="name">Demian</div>
+            <div class="muted">Trabajo</div>
+          </div>
+          <input id="incomeDemian" type="number" step="1" value="56000" />
+        </div>
+
+        <div class="row">
+          <div>
+            <div class="name">Ana Pau</div>
+            <div class="muted">Trabajo</div>
+          </div>
+          <input id="incomeAna" type="number" step="1" value="18000" />
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
+        <h2>🏠 Gastos fijos compartidos</h2>
+
+        <div class="row">
+          <div class="name">Renta</div>
+          <input id="rent" type="number" step="1" value="22000" />
+        </div>
+        <div class="row">
+          <div class="name">Servicios</div>
+          <input id="services" type="number" step="1" value="1500" />
+        </div>
+        <div class="row">
+          <div class="name">Despensa</div>
+          <input id="groceries" type="number" step="1" value="9000" />
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="twoCols">
+      <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
+        <h2>📱 Suscripciones</h2>
+        <div class="row">
+          <div class="name">Netflix</div>
+          <input id="netflix" type="number" step="1" value="350" />
+        </div>
+        <div class="row">
+          <div class="name">Disney+</div>
+          <input id="disney" type="number" step="1" value="339" />
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
+        <h2>🎉 Diversión</h2>
+        <div class="row">
+          <div>
+            <div class="name">Otros (gastos hormiga)</div>
+            <div class="muted">Variable</div>
+          </div>
+          <input id="ants" type="number" step="1" value="4000" />
+        </div>
+        <div class="row">
+          <div>
+            <div class="name">Salidas sociales</div>
+            <div class="muted">Variable</div>
+          </div>
+          <input id="social" type="number" step="1" value="11000" />
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
+      <h2>🆘 Fondo de emergencia</h2>
+
+      <div class="row">
+        <div>
+          <div class="name">Meta</div>
+          <div class="muted">Objetivo</div>
+        </div>
+        <input id="emergencyGoal" type="number" step="1" value="50000" />
+      </div>
+
+      <div class="row">
+        <div class="name">Saldo actual (opcional)</div>
+        <input id="emergencyCurrent" type="number" step="1" value="0" />
+      </div>
+
+      <div class="row">
+        <div class="name">Aportación mensual — Demian</div>
+        <input id="emergencyDemian" type="number" step="1" value="3000" />
+      </div>
+
+      <div class="row">
+        <div class="name">Aportación mensual — Ana Pau</div>
+        <input id="emergencyAna" type="number" step="1" value="1000" />
+      </div>
+
+      <div class="small" style="margin-top:10px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap">
+        <div id="emergencyLabel">Progreso: —</div>
+        <div id="emergencyEta">Tiempo estimado: —</div>
+      </div>
+      <div class="progress" id="emergencyBar" style="margin-top:8px"><div></div></div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="btnbar">
+      <button id="btnReset">Restablecer valores</button>
+      <button id="btnExample" title="Opcional: llena las semanas con un ejemplo">Llenar ejemplo semanal</button>
+      <button class="danger" id="btnZeroWeekly" title="Borra los gastos semanales">Limpiar semanas</button>
+    </div>
+  </section>
+
+  <!-- COLUMNA DERECHA -->
+  <aside class="card">
+    <h2>⚖️ División + Seguimiento semanal</h2>
+
+    <div class="kpi" style="margin-bottom:10px">
+      <div class="label">División proporcional (editable)</div>
+      <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap">
+        <div style="display:flex; align-items:center; gap:8px">
+          <span class="small">Demian %</span>
+          <input id="pctDemian" type="number" min="0" max="100" step="1" value="75" style="width:90px" />
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <span class="small">Ana Pau %</span>
+          <input id="pctAna" type="number" min="0" max="100" step="1" value="25" style="width:90px" />
+        </div>
+      </div>
+      <div class="hint small" id="pctHint">Debe sumar 100.</div>
+    </div>
+
+    <div class="card" style="padding:12px; background: rgba(0,0,0,.10); margin-bottom:10px">
+      <h2>Participación de gastos</h2>
+      <div class="row">
+        <div class="name">Gastos totales</div>
+        <div class="muted" id="splitTotal">$0</div>
+      </div>
+      <div class="row">
+        <div class="name">Parte Demian</div>
+        <div class="muted" id="splitDemian">$0</div>
+      </div>
+      <div class="row">
+        <div class="name">Parte Ana Pau</div>
+        <div class="muted" id="splitAna">$0</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:12px; background: rgba(0,0,0,.10); margin-bottom:10px">
+      <h2>📈 Inversión mínima (30%)</h2>
+      <div class="small">Se calcula después de pagar su parte proporcional + su aportación al fondo.</div>
+      <div style="height:8px"></div>
+      <div class="row">
+        <div class="name">Mínimo Demian</div>
+        <div class="muted" id="investDemian">$0</div>
+      </div>
+      <div class="row">
+        <div class="name">Mínimo Ana Pau</div>
+        <div class="muted" id="investAna">$0</div>
+      </div>
+      <div class="row">
+        <div class="name">Total mínimo</div>
+        <div class="muted" id="investTotal">$0</div>
+      </div>
+      <div class="note" style="margin-top:10px">
+        “Cada quien es libre de invertir más del 30% si quiere acelerar sus metas — este es solo el mínimo acordado.”
+      </div>
+    </div>
+
+    <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
+      <h2>📅 Seguimiento semanal (Diversión + Despensa)</h2>
+      <div class="small">Objetivo por semana: <span id="weeklyTargetLabel">$6,000</span></div>
+
+      <div style="height:10px"></div>
+
+      <div class="row">
+        <div class="name">Semana 1</div>
+        <input id="w1" type="number" step="1" value="0" style="width:120px" />
+      </div>
+      <div class="row">
+        <div class="name">Semana 2</div>
+        <input id="w2" type="number" step="1" value="0" style="width:120px" />
+      </div>
+      <div class="row">
+        <div class="name">Semana 3</div>
+        <input id="w3" type="number" step="1" value="0" style="width:120px" />
+      </div>
+      <div class="row">
+        <div class="name">Semana 4</div>
+        <input id="w4" type="number" step="1" value="0" style="width:120px" />
+      </div>
+
+      <div class="small" style="margin-top:10px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap">
+        <div id="weeklyTotalLabel">Total: —</div>
+        <div id="weeklyVsLabel">Vs objetivo: —</div>
+      </div>
+      <div class="progress" id="weeklyBar" style="margin-top:8px"><div></div></div>
+    </div>
+  </aside>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function dinero(n){
+    const v = Number(n || 0);
+    return v.toLocaleString("es-MX", {style:"currency", currency:"MXN", maximumFractionDigits:0});
+  }
+
+  // Valores por defecto basados en tu página de Notion
+  const DEFAULTS = {
+    incomeDemian: 56000,
+    incomeAna: 18000,
+    rent: 22000,
+    services: 1500,
+    groceries: 9000,
+    netflix: 350,
+    disney: 339,
+    ants: 4000,
+    social: 11000,
+    // Cuidado personal (Limpieza) en tu página
+    personalCare: 1000,
+    pctDemian: 75,
+    pctAna: 25,
+    weeklyTarget: 6000,
+    emergencyGoal: 50000,
+    emergencyCurrent: 0,
+    emergencyDemian: 3000,
+    emergencyAna: 1000,
+    w1: 0, w2: 0, w3: 0, w4: 0
+  };
+
+  function totalCuidadoPersonal(){ return DEFAULTS.personalCare; }
+
+  function leerNumero(id){ return Number($(id).value || 0); }
+  function ponerNumero(id, v){ $(id).value = Number(v); }
+
+  function validarPorcentajes(){
+    const d = leerNumero("pctDemian");
+    const a = leerNumero("pctAna");
+    const suma = d + a;
+    $("pctHint").textContent = (suma === 100)
+      ? "OK (suma 100)."
+      : `Aviso: suma ${suma}. Ajusta a 100 para una división correcta.`;
+    $("pctHint").style.color = (suma === 100) ? "var(--good)" : "var(--warn)";
+  }
+
+  function setProgreso(barEl, pct, modo){
+    const p = Math.max(0, Math.min(100, pct));
+    barEl.classList.remove("good","warn","bad");
+    if(modo) barEl.classList.add(modo);
+    barEl.querySelector("div").style.width = p + "%";
+  }
+
+  function calcular(){
+    validarPorcentajes();
+
+    const ingresos = leerNumero("incomeDemian") + leerNumero("incomeAna");
+
+    const fijosCompartidos = leerNumero("rent") + leerNumero("services") + leerNumero("groceries");
+    const suscripciones = leerNumero("netflix") + leerNumero("disney");
+    const diversion = leerNumero("ants") + leerNumero("social");
+    const personal = totalCuidadoPersonal();
+
+    const gastos = fijosCompartidos + suscripciones + diversion + personal;
+    const restante = ingresos - gastos;
+
+    $("kpiIncome").textContent = dinero(ingresos);
+    $("kpiExpenses").textContent = dinero(gastos);
+    $("kpiRemaining").textContent = dinero(restante);
+    $("kpiWeeklyTarget").textContent = dinero(DEFAULTS.weeklyTarget);
+    $("weeklyTargetLabel").textContent = dinero(DEFAULTS.weeklyTarget);
+
+    // Tasa de ahorro
+    const tasaAhorro = ingresos > 0 ? (restante / ingresos) : 0;
+    $("savingTag").textContent = `Tasa de ahorro: ${(tasaAhorro*100).toFixed(1)}%`;
+
+    // Estado
+    let estado = "Saludable";
+    let colorEstado = "var(--good)";
+    if(restante < 0){ estado = "Excedido"; colorEstado = "var(--bad)"; }
+    else if(tasaAhorro < 0.2){ estado = "Ajustado"; colorEstado = "var(--warn)"; }
+    $("statusTag").textContent = `Estado: ${estado}`;
+    $("statusTag").style.color = colorEstado;
+
+    // División
+    const pctD = leerNumero("pctDemian") / 100;
+    const pctA = leerNumero("pctAna") / 100;
+    const parteD = gastos * pctD;
+    const parteA = gastos * pctA;
+
+    $("splitTotal").textContent = dinero(gastos);
+    $("splitDemian").textContent = dinero(parteD);
+    $("splitAna").textContent = dinero(parteA);
+
+    // Fondo emergencia
+    const meta = leerNumero("emergencyGoal");
+    const actual = leerNumero("emergencyCurrent");
+    const aporteTotal = leerNumero("emergencyDemian") + leerNumero("emergencyAna");
+
+    const pctFondo = meta > 0 ? (actual / meta) * 100 : 0;
+    $("emergencyLabel").textContent = `Progreso: ${dinero(actual)} / ${dinero(meta)} (${Math.max(0, pctFondo).toFixed(1)}%)`;
+
+    let eta = "—";
+    if(meta > actual && aporteTotal > 0){
+      const meses = (meta - actual) / aporteTotal;
+      eta = `Tiempo estimado: ~${meses.toFixed(1)} meses`;
+    } else if(meta <= actual && meta > 0){
+      eta = "Tiempo estimado: meta alcanzada";
+    }
+    $("emergencyEta").textContent = eta;
+
+    const eMode = pctFondo >= 100 ? "good" : (pctFondo >= 50 ? "warn" : "bad");
+    setProgreso($("emergencyBar"), pctFondo, eMode);
+
+    // Inversión mínima (30%)
+    const tasaInv = 0.30;
+    const restanteDemian = leerNumero("incomeDemian") - parteD - leerNumero("emergencyDemian");
+    const restanteAna = leerNumero("incomeAna") - parteA - leerNumero("emergencyAna");
+
+    const invD = Math.max(0, restanteDemian * tasaInv);
+    const invA = Math.max(0, restanteAna * tasaInv);
+
+    $("investDemian").textContent = dinero(invD);
+    $("investAna").textContent = dinero(invA);
+    $("investTotal").textContent = dinero(invD + invA);
+
+    // Seguimiento semanal
+    const objetivoSemana = DEFAULTS.weeklyTarget;
+    const totalSem = leerNumero("w1")+leerNumero("w2")+leerNumero("w3")+leerNumero("w4");
+    const objetivoMes = objetivoSemana * 4;
+    const pctSem = objetivoMes > 0 ? (totalSem / objetivoMes) * 100 : 0;
+    const dif = totalSem - objetivoMes;
+
+    $("weeklyTotalLabel").textContent = `Total: ${dinero(totalSem)} / ${dinero(objetivoMes)}`;
+    $("weeklyVsLabel").textContent = `Vs objetivo: ${dif >= 0 ? "+" : ""}${dinero(dif)}`;
+
+    let wMode = "good";
+    if(pctSem > 110) wMode = "bad";
+    else if(pctSem > 100) wMode = "warn";
+    setProgreso($("weeklyBar"), pctSem, wMode);
+  }
+
+  function restablecer(){
+    ponerNumero("incomeDemian", DEFAULTS.incomeDemian);
+    ponerNumero("incomeAna", DEFAULTS.incomeAna);
+    ponerNumero("rent", DEFAULTS.rent);
+    ponerNumero("services", DEFAULTS.services);
+    ponerNumero("groceries", DEFAULTS.groceries);
+    ponerNumero("netflix", DEFAULTS.netflix);
+    ponerNumero("disney", DEFAULTS.disney);
+    ponerNumero("ants", DEFAULTS.ants);
+    ponerNumero("social", DEFAULTS.social);
+    ponerNumero("pctDemian", DEFAULTS.pctDemian);
+    ponerNumero("pctAna", DEFAULTS.pctAna);
+    ponerNumero("emergencyGoal", DEFAULTS.emergencyGoal);
+    ponerNumero("emergencyCurrent", DEFAULTS.emergencyCurrent);
+    ponerNumero("emergencyDemian", DEFAULTS.emergencyDemian);
+    ponerNumero("emergencyAna", DEFAULTS.emergencyAna);
+    ponerNumero("w1", DEFAULTS.w1);
+    ponerNumero("w2", DEFAULTS.w2);
+    ponerNumero("w3", DEFAULTS.w3);
+    ponerNumero("w4", DEFAULTS.w4);
+    calcular();
+  }
+
+  function ejemploSemanal(){
+    ponerNumero("w1", 5200);
+    ponerNumero("w2", 6100);
+    ponerNumero("w3", 5800);
+    ponerNumero("w4", 7000);
+    calcular();
+  }
+
+  function limpiarSemanas(){
+    ponerNumero("w1", 0);
+    ponerNumero("w2", 0);
+    ponerNumero("w3", 0);
+    ponerNumero("w4", 0);
+    calcular();
+  }
+
+  document.querySelectorAll("input").forEach(i => i.addEventListener("input", calcular));
+  $("btnReset").addEventListener("click", restablecer);
+  $("btnExample").addEventListener("click", ejemploSemanal);
+  $("btnZeroWeekly").addEventListener("click", limpiarSemanas);
+
+  restablecer();
+</script>
+</body>
+</html>
