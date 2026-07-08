@@ -3,11 +3,15 @@
  * -------------------------------------------------------
  * Usa una Google Sheet como base de datos ligera y compartida.
  * Expone un Web App con:
- *   GET  ?action=ping             -> prueba de conexión
- *   GET  ?action=all              -> { ok, months: { "2026-07": {...}, ... } }
- *   GET  ?action=get&month=YYYY-MM-> { ok, month, data }
- *   GET  ?action=list             -> { ok, months: ["2026-07", ...] }
- *   POST { token, month, data }   -> guarda/actualiza un mes
+ *   GET  ?action=ping              -> prueba de conexión
+ *   GET  ?action=all               -> { ok, months:{...}, updatedAt:{ "2026-07": iso, ... } }
+ *   GET  ?action=get&month=YYYY-MM -> { ok, month, data, updatedAt }
+ *   GET  ?action=list              -> { ok, months:["2026-07", ...] }
+ *   POST { token, month, data, baseUpdatedAt, force }
+ *        -> guarda/actualiza un mes. Si baseUpdatedAt no coincide con el
+ *           updatedAt del servidor (y sin force:true), responde
+ *           { ok:false, conflict:true, serverUpdatedAt, data } para no
+ *           sobrescribir cambios de la otra persona.
  *   POST { token, action:"saveAll", months:{...} } -> guarda varios meses
  *
  * Estructura de la hoja "Meses" (una fila por mes, encabezados dinámicos):
@@ -27,17 +31,22 @@
 
 var SHEET_NAME = 'Meses';
 var TOKEN_PROP = 'ACCESS_TOKEN'; // opcional: Project Settings > Script properties
+var TZ = 'America/Mexico_City'; // zona horaria para normalizar meses
 
 function doGet(e) {
   try {
     var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : 'all';
 
     if (action === 'ping') return json_({ ok: true, pong: true, time: new Date().toISOString() });
-    if (action === 'get')  return json_({ ok: true, month: e.parameter.month, data: readMonth_(e.parameter.month) });
+    if (action === 'get') {
+      var gm = normMonth_(e.parameter.month);
+      return json_({ ok: true, month: gm, data: readMonth_(gm), updatedAt: readUpdatedAt_(gm) });
+    }
     if (action === 'list') return json_({ ok: true, months: listMonths_() });
 
-    // por defecto: todos los meses
-    return json_({ ok: true, months: readAll_() });
+    // por defecto: todos los meses + marcas de tiempo
+    var all = readAll_();
+    return json_({ ok: true, months: all.months, updatedAt: all.updatedAt });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   }
@@ -57,8 +66,16 @@ function doPost(e) {
     }
 
     if (body.month && body.data) {
-      var updatedAt = writeMonth_(body.month, body.data);
-      return json_({ ok: true, month: body.month, updatedAt: updatedAt });
+      var month = normMonth_(body.month);
+
+      // Detección de conflicto: si el servidor cambió respecto a la base del cliente
+      var serverUpdatedAt = readUpdatedAt_(month);
+      if (!body.force && serverUpdatedAt && body.baseUpdatedAt && serverUpdatedAt !== body.baseUpdatedAt) {
+        return json_({ ok: false, conflict: true, serverUpdatedAt: serverUpdatedAt, data: readMonth_(month) });
+      }
+
+      var updatedAt = writeMonth_(month, body.data);
+      return json_({ ok: true, month: month, updatedAt: updatedAt });
     }
 
     return json_({ ok: false, error: 'bad request' });
@@ -69,12 +86,24 @@ function doPost(e) {
 
 /* ------------------------- helpers de hoja ------------------------- */
 
+// Normaliza cualquier valor a "YYYY-MM" (robusto ante fechas y strings raros)
+function normMonth_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM');
+  var s = String(v || '').trim();
+  var m = s.match(/^(\d{4})-(\d{1,2})/);
+  if (m) return m[1] + '-' + ('0' + m[2]).slice(-2);
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return Utilities.formatDate(d, TZ, 'yyyy-MM');
+  return s;
+}
+
 function sheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) {
     sh = ss.insertSheet(SHEET_NAME);
     sh.getRange(1, 1, 1, 2).setValues([['mes', 'updatedAt']]);
+    sh.getRange(1, 1, sh.getMaxRows(), 1).setNumberFormat('@'); // col A como texto (evita que 2026-07 se vuelva fecha)
   }
   return sh;
 }
@@ -99,11 +128,12 @@ function ensureHeaders_(sh, keys) {
 }
 
 function rowIndexForMonth_(sh, month) {
+  var target = normMonth_(month);
   var last = sh.getLastRow();
   if (last < 2) return -1;
   var col = sh.getRange(2, 1, last - 1, 1).getValues();
   for (var i = 0; i < col.length; i++) {
-    if (String(col[i][0]) === String(month)) return i + 2;
+    if (normMonth_(col[i][0]) === target) return i + 2;
   }
   return -1;
 }
@@ -113,17 +143,19 @@ function writeMonth_(month, data) {
   lock.tryLock(20000);
   try {
     var sh = sheet_();
+    var m = normMonth_(month);
     var keys = Object.keys(data || {});
     var hdr = ensureHeaders_(sh, ['mes', 'updatedAt'].concat(keys));
     var updatedAt = new Date().toISOString();
     var record = {};
     keys.forEach(function (k) { record[k] = data[k]; });
-    record.mes = month;
+    record.mes = m;
     record.updatedAt = updatedAt;
 
     var rowVals = hdr.map(function (h) { return (record[h] !== undefined ? record[h] : ''); });
-    var r = rowIndexForMonth_(sh, month);
+    var r = rowIndexForMonth_(sh, m);
     if (r === -1) r = sh.getLastRow() + 1;
+    sh.getRange(r, 1).setNumberFormat('@'); // fuerza la celda "mes" como texto
     sh.getRange(r, 1, 1, hdr.length).setValues([rowVals]);
     return updatedAt;
   } finally {
@@ -132,30 +164,33 @@ function writeMonth_(month, data) {
 }
 
 function readMonth_(month) {
-  var sh = sheet_();
-  var hdr = headers_(sh);
-  var r = rowIndexForMonth_(sh, month);
-  if (r === -1) return null;
-  var vals = sh.getRange(r, 1, 1, hdr.length).getValues()[0];
-  return rowToObj_(hdr, vals);
+  return readAll_().months[normMonth_(month)] || null;
+}
+
+function readUpdatedAt_(month) {
+  return readAll_().updatedAt[normMonth_(month)] || '';
 }
 
 function readAll_() {
   var sh = sheet_();
   var last = sh.getLastRow();
   var hdr = headers_(sh);
-  var out = {};
-  if (last < 2) return out;
+  var months = {}, updatedAt = {};
+  if (last < 2) return { months: months, updatedAt: updatedAt };
+  var uIdx = hdr.indexOf('updatedAt');
   var vals = sh.getRange(2, 1, last - 1, hdr.length).getValues();
   vals.forEach(function (row) {
-    var m = String(row[0] || '').trim();
-    if (m) out[m] = rowToObj_(hdr, row);
+    var m = normMonth_(row[0]);
+    if (m) {
+      months[m] = rowToObj_(hdr, row);
+      updatedAt[m] = (uIdx >= 0 && row[uIdx]) ? String(row[uIdx]) : '';
+    }
   });
-  return out;
+  return { months: months, updatedAt: updatedAt };
 }
 
 function listMonths_() {
-  return Object.keys(readAll_()).sort();
+  return Object.keys(readAll_().months).sort();
 }
 
 function rowToObj_(hdr, vals) {

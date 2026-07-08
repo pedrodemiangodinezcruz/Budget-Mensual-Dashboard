@@ -170,7 +170,29 @@ Si en el futuro se agrega un campo nuevo, el script **crea la columna solo**.
 |---|---|---|
 | *"No se pudo conectar"* al probar | La URL no termina en `/exec` o el acceso no es "Cualquier usuario" | Revisa la implementación (paso 3) |
 | Lee pero no guarda (`unauthorized`) | El token del dashboard ≠ `ACCESS_TOKEN` de Script properties | Iguala ambos o borra el token en ambos lados |
-| Cambié `Code.gs` y no aplica | Publicaste una implementación nueva con otra URL | Usa *Gestionar implementaciones → Nueva versión* en la misma URL |
+| Cambié `Code.gs` y no aplica | No publicaste una versión nueva | *Implementar → Gestionar implementaciones → ✏️ → Versión: Nueva versión* (misma URL) |
+| `"Missing month parameter"` u otro error viejo | El Web App sirve una versión antigua del script | Vuelve a pegar `Code.gs` y publica **versión nueva** |
+| Aparecía **"Invalid Date"** o un mes raro | Google Sheets convirtió `2026-07` en fecha | Ya resuelto: el frontend normaliza y el nuevo `Code.gs` guarda la columna `mes` como texto |
+| ⚠️ *"La nube tiene una versión más reciente"* | Tu pareja guardó el mismo mes desde otro dispositivo | Pulsa **Recargar desde la nube** (traer lo suyo) o **Guardar de todos modos** (que ganen tus cambios) |
 | Error CORS en consola | Deploy con acceso restringido | Debe ser **Cualquier usuario** |
 | No veo cambios del otro equipo | No hay tiempo real | Pulsa **🔄 Sincronizar** o recarga |
+
+---
+
+## Protección contra conflictos (recomendado: republicar)
+
+La versión actual de `Code.gs` añade **detección de conflictos** (compara `updatedAt`)
+y guarda la columna `mes` como **texto** (evita el bug de "Invalid Date").
+
+Para activarlo:
+1. Pega la versión actual de `Code.gs` en el editor de Apps Script y guarda.
+2. **Implementar → Gestionar implementaciones → ✏️ → Versión: «Nueva versión» → Implementar.**
+
+> El dashboard funciona **aunque no republiques** (hace *fallback* elegante), pero
+> sin republicar no tendrás la advertencia de conflicto entre dispositivos.
+
+Cómo se ve un conflicto: si tú y tu pareja editan **el mismo mes** y guardan casi a la
+vez, quien guarde después verá un aviso amarillo con dos opciones: **Recargar desde la
+nube** (descarta lo tuyo y trae lo de tu pareja) o **Guardar de todos modos** (tus
+cambios sobrescriben). Así nadie pierde datos "en silencio".
 

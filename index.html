@@ -435,6 +435,40 @@
     .modalHelp{ margin-top:14px; font-size:11.5px; color:var(--muted); line-height:1.55;
       border-top:1px solid var(--border); padding-top:12px; }
     .modalHelp code{ background: rgba(255,255,255,.06); padding:1px 5px; border-radius:6px; }
+
+    /* Estado de nube: conflicto */
+    .cloud-warn{ color:var(--warn); border-color: rgba(255,204,102,.5); }
+
+    /* Banner de conflicto de sincronización */
+    .conflicto{
+      margin-top:8px; padding:12px 16px; border-radius:12px;
+      border:1px solid rgba(255,204,102,.5); background: rgba(255,204,102,.12);
+      color:#ffe6ad; font-size:13px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    }
+    .conflicto[hidden]{ display:none; }
+    .conflicto-info{ display:flex; align-items:center; gap:8px; font-weight:600; }
+    .conflicto-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+
+    /* Insights del mes (en el resumen, en pantalla) */
+    .insightsBox{ margin-top:14px; border-top:1px solid rgba(255,255,255,.08); padding-top:12px; }
+    .insightsTitle{ font-size:13px; font-weight:700; color:var(--text); margin-bottom:8px; }
+    .insightRow{
+      display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:var(--muted);
+      padding:6px 10px; margin:5px 0; border-radius:10px;
+      border:1px solid var(--border); background: rgba(0,0,0,.16);
+      border-left:3px solid var(--border);
+    }
+    .insightRow b{ color:var(--text); }
+    .insightRow .insightIcon{ flex:0 0 auto; }
+    .insightRow.tone-good{ border-left-color: var(--good); }
+    .insightRow.tone-warn{ border-left-color: var(--warn); }
+    .insightRow.tone-bad{ border-left-color: var(--bad); }
+    .insightRow.tone-idle{ border-left-color: var(--accent); }
+
+    /* Insights dentro del reporte (impresión) */
+    .rpt-ins-title{ font-weight:800; margin-bottom:6px; }
+    .rpt-ins-row{ margin:4px 0; }
   </style>
 </head>
 
@@ -471,6 +505,16 @@
 <div class="alertaWrap no-print">
   <div id="alertaExceso" class="alerta" hidden>
     ⚠️ Estás gastando más de lo que ingresas. Revisa tus gastos para no excederte.
+  </div>
+  <div id="conflictoBanner" class="conflicto" hidden>
+    <div class="conflicto-info">
+      <span class="conflicto-icon">⚠️</span>
+      <span id="conflictoTexto">La nube tiene una versión más reciente de este mes.</span>
+    </div>
+    <div class="conflicto-actions">
+      <button id="btnConflictoRecargar" title="Descartar mis cambios y traer la versión de la nube">Recargar desde la nube</button>
+      <button id="btnConflictoForzar" class="danger" title="Sobrescribir con mis cambios">Guardar de todos modos</button>
+    </div>
   </div>
 </div>
 
@@ -534,6 +578,8 @@
         </tr>
       </tbody>
     </table>
+
+    <div class="insightsBox" id="insightsBox"></div>
   </section>
 
   <!-- COMPARATIVA VS MES ANTERIOR -->
@@ -1126,18 +1172,49 @@
     "emergencyDemian","emergencyAna","w1","w2","w3","w4"
   ];
 
+  const MESES_ES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
   function mesActualKey(d = new Date()){
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
+  // Normaliza cualquier valor a clave de mes "YYYY-MM"; devuelve null si no se puede.
+  // Robusto ante fechas, strings ISO, o valores que Sheets convirtió a fecha.
+  function mesKeyNormalizar(v){
+    if(v === null || v === undefined) return null;
+    if(v instanceof Date) return isNaN(v.getTime()) ? null : mesActualKey(v);
+    const s = String(v).trim();
+    if(!s) return null;
+    const m = s.match(/^(\d{4})-(\d{1,2})/);           // YYYY-MM(‑DD…)
+    if(m){
+      const y = Number(m[1]), mo = Number(m[2]);
+      if(mo >= 1 && mo <= 12) return `${y}-${String(mo).padStart(2,"0")}`;
+    }
+    const d = new Date(s);                              // p. ej. "Sat Jul 01 2026"
+    return isNaN(d.getTime()) ? null : mesActualKey(d);
+  }
+
+  // Nombre legible y consistente en español: "Julio de 2026". Nunca "Invalid Date".
   function nombreMes(key){
-    const [y, m] = String(key).split("-").map(Number);
-    const s = new Date(y, (m || 1) - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
-    return s.charAt(0).toUpperCase() + s.slice(1);
+    const norm = mesKeyNormalizar(key);
+    if(!norm) return key ? String(key) : "Mes sin fecha";
+    const [y, m] = norm.split("-").map(Number);
+    const nombre = MESES_ES[m - 1] || "";
+    return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} de ${y}`;
+  }
+
+  // Reescribe un mapa de meses usando claves normalizadas "YYYY-MM"
+  function normalizarClavesMeses(mapa){
+    const out = {};
+    Object.keys(mapa || {}).forEach(k => {
+      const nk = mesKeyNormalizar(k) || String(k);
+      out[nk] = mapa[k];
+    });
+    return out;
   }
 
   let mesActivo = mesActualKey();
-  let store = { activeMonth: mesActivo, months: {} };
+  let store = { activeMonth: mesActivo, months: {}, updatedAt: {} };
 
   function leerFormulario(){
     const data = {};
@@ -1171,7 +1248,8 @@
   }
 
   function mesAnteriorKey(key){
-    const [y, m] = String(key).split("-").map(Number);
+    const norm = mesKeyNormalizar(key) || mesActualKey();
+    const [y, m] = norm.split("-").map(Number);
     return mesActualKey(new Date(y, (m - 1) - 1, 1));
   }
 
@@ -1233,6 +1311,79 @@
       }
     }
     return s;
+  }
+
+  // Lista de insights automáticos, breves y útiles, del mes
+  function generarInsights(d){
+    const out = [];
+    const pctAhorro = d.savingRate * 100;
+    const varPct = d.expense > 0 ? (d.variables / d.expense) * 100 : 0;
+    const fijPct = 100 - varPct;
+
+    // 1) Estado general del mes
+    if(d.free < 0){
+      out.push({ icon:"🔴", tono:"bad", texto:`Mes <b>riesgoso</b>: gastaron ${dinero(-d.free)} más de lo que ingresaron.` });
+    } else if(pctAhorro < 20){
+      out.push({ icon:"🟡", tono:"warn", texto:`Mes <b>ajustado</b>: ahorran ${pctAhorro.toFixed(0)}% · quedan ${dinero(d.free)} libres.` });
+    } else {
+      out.push({ icon:"🟢", tono:"good", texto:`Mes <b>saludable</b>: ahorran ${pctAhorro.toFixed(0)}% · ${dinero(d.free)} libres.` });
+    }
+
+    // 2) Categoría con más peso
+    if(d.cats && d.cats.length){
+      const top = d.cats.slice().sort((a,b) => b.value - a.value)[0];
+      if(top && top.value > 0){
+        const p = d.expense > 0 ? (top.value / d.expense) * 100 : 0;
+        out.push({ icon:"📊", tono:"idle", texto:`Mayor gasto: <b>${top.label}</b> — ${dinero(top.value)} (${p.toFixed(0)}%).` });
+      }
+    }
+
+    // 3) Fijos vs variables
+    if(d.expense > 0){
+      if(varPct > fijPct){
+        out.push({ icon:"🔀", tono:"warn", texto:`Los gastos <b>variables</b> (${varPct.toFixed(0)}%) superan a los fijos (${fijPct.toFixed(0)}%): ahí hay margen de ajuste.` });
+      } else {
+        out.push({ icon:"🔒", tono:"idle", texto:`Tus gastos <b>fijos</b> (${fijPct.toFixed(0)}%) pesan más que los variables (${varPct.toFixed(0)}%).` });
+      }
+    }
+
+    // 4) Inversión mínima por persona
+    out.push({ icon:"📈", tono:"idle", texto:`Inversión mínima (${d.invPct}%): <b>${dinero(d.invD)}</b> Demian · <b>${dinero(d.invA)}</b> Ana Pau.` });
+
+    // 5) Ritmo del fondo de emergencia
+    if(d.fund.meta > 0){
+      if(d.fund.pct >= 100){
+        out.push({ icon:"🆘", tono:"good", texto:`Fondo de emergencia <b>completo</b> 🎉 (${d.fund.pct.toFixed(0)}% de la meta).` });
+      } else if(d.fund.aporte > 0){
+        const meses = Math.ceil((d.fund.meta - d.fund.actual) / d.fund.aporte);
+        out.push({ icon:"🆘", tono: meses <= 12 ? "good" : "warn", texto:`Fondo al <b>${d.fund.pct.toFixed(0)}%</b>: a este ritmo se completa en ~<b>${meses}</b> mes(es).` });
+      } else {
+        out.push({ icon:"🆘", tono:"warn", texto:`Fondo al ${d.fund.pct.toFixed(0)}%: define una aportación mensual para avanzar.` });
+      }
+    }
+
+    // 6) Cambio importante vs mes anterior
+    if(d.cmp){
+      const dg = d.expense - d.cmp.prev.gastos;
+      const umbral = Math.max(500, d.cmp.prev.gastos * 0.05);
+      if(Math.abs(dg) >= umbral){
+        out.push(dg > 0
+          ? { icon:"⚠️", tono:"warn", texto:`Gastaste <b>${dinero(dg)} más</b> que ${d.cmp.prevName}. Revisa qué subió.` }
+          : { icon:"✅", tono:"good", texto:`Gastaste <b>${dinero(-dg)} menos</b> que ${d.cmp.prevName}. ¡Bien!` });
+      }
+    }
+
+    return out;
+  }
+
+  function renderInsights(lista){
+    const box = $("insightsBox");
+    if(!box) return;
+    box.innerHTML =
+      `<div class="insightsTitle">💡 Insights del mes</div>` +
+      (lista || []).map(i =>
+        `<div class="insightRow tone-${i.tono}"><span class="insightIcon">${i.icon}</span><span>${i.texto}</span></div>`
+      ).join("");
   }
 
   // Rellena la vista de reporte (solo se ve al imprimir / guardar PDF)
@@ -1316,7 +1467,12 @@
 
     txt("rptInsight", "");
     const insightEl = $("rptInsight");
-    if(insightEl) insightEl.innerHTML = d.insight;
+    if(insightEl){
+      const filas = (d.insights && d.insights.length)
+        ? d.insights.map(i => `<div class="rpt-ins-row">${i.icon} ${i.texto}</div>`).join("")
+        : `<div class="rpt-ins-row">${d.insight || ""}</div>`;
+      insightEl.innerHTML = `<div class="rpt-ins-title">💡 Insights del mes</div>${filas}`;
+    }
   }
 
   function valoresPorDefecto(){
@@ -1344,7 +1500,11 @@
       if(raw){
         const parsed = JSON.parse(raw);
         if(parsed && parsed.months && typeof parsed.months === "object"){
-          store = { activeMonth: parsed.activeMonth || mesActualKey(), months: parsed.months };
+          store = {
+            activeMonth: mesKeyNormalizar(parsed.activeMonth) || mesActualKey(),
+            months: normalizarClavesMeses(parsed.months),
+            updatedAt: parsed.updatedAt || {}
+          };
           return true;
         }
       }
@@ -1356,7 +1516,7 @@
       if(legacy){
         const data = JSON.parse(legacy);
         const key = mesActualKey();
-        store = { activeMonth: key, months: { [key]: data } };
+        store = { activeMonth: key, months: { [key]: data }, updatedAt: {} };
         guardarStore();
         return true;
       }
@@ -1366,7 +1526,11 @@
   }
 
   function mesesGuardados(){
-    return Object.keys(store.months).sort();
+    // Ordena por clave normalizada (cronológico) e ignora claves inválidas
+    return Object.keys(store.months)
+      .map(k => mesKeyNormalizar(k) || k)
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .sort();
   }
 
   function sincronizarUIMes(){
@@ -1409,7 +1573,8 @@
   }
 
   function moverMes(delta){
-    const [y, m] = mesActivo.split("-").map(Number);
+    const norm = mesKeyNormalizar(mesActivo) || mesActualKey();
+    const [y, m] = norm.split("-").map(Number);
     irAMes(mesActualKey(new Date(y, (m - 1) + delta, 1)));
   }
 
@@ -1418,7 +1583,7 @@
     if(!confirm("¿Borrar TODOS los meses guardados y restablecer los valores por defecto?")) return;
     try{ localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(LEGACY_KEY); }catch(e){}
     mesActivo = mesActualKey();
-    store = { activeMonth: mesActivo, months: {} };
+    store = { activeMonth: mesActivo, months: {}, updatedAt: {} };
     escribirFormulario(valoresPorDefecto());
     sincronizarUIMes();
     calcular();
@@ -1430,6 +1595,8 @@
   const cloud = { url:"", token:"", enabled:false };
   let cloudSaveTimer = null;
   let cloudPending = false;
+  // Estado de conflicto (la nube tiene una versión más reciente del mismo mes)
+  const conflicto = { activo:false, month:null, remote:null, serverUpdatedAt:"" };
 
   function horaCorta(){
     return new Date().toLocaleTimeString("es-MX", { hour:"2-digit", minute:"2-digit" });
@@ -1461,15 +1628,22 @@
     const res = await fetch(urlConParam(cloud.url, "action=all"), { method:"GET" });
     const data = await res.json();
     if(!data || !data.ok) throw new Error((data && data.error) || "respuesta no válida");
-    return data.months || {};
+    return { months: data.months || {}, updatedAt: data.updatedAt || {} };
   }
 
-  async function cloudPostMonth(month, datos){
-    const payload = { token: cloud.token, month, data: datos };
+  async function cloudPostMonth(month, datos, force){
+    if(!store.updatedAt) store.updatedAt = {};
+    const payload = {
+      token: cloud.token, month, data: datos,
+      baseUpdatedAt: store.updatedAt[month] || "", // para detectar conflictos en el servidor
+      force: !!force
+    };
     // Cuerpo como texto plano => petición "simple", evita el preflight CORS de Apps Script
     const res = await fetch(cloud.url, { method:"POST", body: JSON.stringify(payload) });
     const data = await res.json();
+    if(data && data.conflict) return data;                 // conflicto: lo maneja quien llama
     if(!data || !data.ok) throw new Error((data && data.error) || "no se pudo guardar");
+    if(data.updatedAt) store.updatedAt[month] = data.updatedAt; // guarda la nueva marca base
     return data;
   }
 
@@ -1498,7 +1672,60 @@
     const datos = store.months[m] || leerFormulario();
     try{
       setCloudStatus("Guardando en la nube…", "saving");
-      await cloudPostMonth(m, datos);
+      const r = await cloudPostMonth(m, datos);
+      if(r && r.conflict){ manejarConflicto(m, r); return; }
+      cloudPending = false;
+      setCloudStatus("Guardado ✓ " + horaCorta(), "ok");
+    }catch(err){
+      setCloudStatus("Error al guardar (modo local)", "error");
+    }
+  }
+
+  // ---- Conflictos de sincronización (dos personas editan el mismo mes) ----
+  function manejarConflicto(month, r){
+    cloudPending = true; // seguimos con cambios sin guardar
+    conflicto.activo = true;
+    conflicto.month = month;
+    conflicto.remote = (r && r.data) || null;
+    conflicto.serverUpdatedAt = (r && r.serverUpdatedAt) || "";
+    setCloudStatus("⚠ La nube tiene una versión más reciente", "warn");
+    const banner = $("conflictoBanner");
+    if(banner){
+      txt("conflictoTexto",
+        `Tu pareja guardó cambios en ${nombreMes(month)} desde otro dispositivo. ` +
+        `Si guardas ahora, sobrescribirás lo suyo.`);
+      banner.hidden = false;
+    }
+  }
+
+  function ocultarConflicto(){
+    conflicto.activo = false; conflicto.month = null; conflicto.remote = null;
+    const banner = $("conflictoBanner");
+    if(banner) banner.hidden = true;
+  }
+
+  // Descartar mis cambios y traer la versión de la nube
+  function resolverConflictoRecargar(){
+    const m = conflicto.month;
+    if(!m){ ocultarConflicto(); return; }
+    if(conflicto.remote) store.months[m] = conflicto.remote;
+    if(conflicto.serverUpdatedAt){ if(!store.updatedAt) store.updatedAt = {}; store.updatedAt[m] = conflicto.serverUpdatedAt; }
+    guardarStore();
+    ocultarConflicto();
+    cloudPending = false;
+    if(m === mesActivo && store.months[m]) escribirFormulario(store.months[m]);
+    sincronizarUIMes();
+    calcular();
+    setCloudStatus("Recargado desde la nube ✓ " + horaCorta(), "ok");
+  }
+
+  // Forzar: mis cambios ganan (sobrescribe lo remoto)
+  async function resolverConflictoForzar(){
+    const m = conflicto.month || mesActivo;
+    ocultarConflicto();
+    try{
+      setCloudStatus("Guardando (forzado)…", "saving");
+      await cloudPostMonth(m, store.months[m] || leerFormulario(), true);
       cloudPending = false;
       setCloudStatus("Guardado ✓ " + horaCorta(), "ok");
     }catch(err){
@@ -1528,13 +1755,15 @@
   async function cloudSync(){
     if(!cloud.enabled){ setCloudStatus("Modo local (sin nube)", "idle"); return; }
     try{
-      if(cloudPending) await cloudFlush(mesActivo);
+      if(cloudPending && !conflicto.activo) await cloudFlush(mesActivo);
       setCloudStatus("Sincronizando…", "saving");
       if(modalNubeAbierto()) setModalStatus("Sincronizando…");
-      const months = await cloudFetchAll();
-      store.months = Object.assign({}, store.months, months);
+      const { months, updatedAt } = await cloudFetchAll();
+      store.months = Object.assign({}, store.months, normalizarClavesMeses(months));
+      store.updatedAt = Object.assign({}, store.updatedAt || {}, updatedAt);
       store.activeMonth = mesActivo;
       guardarStore(); // respaldo local
+      ocultarConflicto();
       if(store.months[mesActivo]) escribirFormulario(store.months[mesActivo]);
       sincronizarUIMes();
       calcular(); // recalcula (no vuelve a marcar cambios pendientes)
@@ -1918,6 +2147,8 @@
       cmpEmptyMsg: rPrevData ? "" : `Aún no hay datos de ${nombreMes(rPrevKey)}. Guarda ese mes para incluir la comparación en el reporte.`
     };
     repData.insight = insightDelMes(repData);
+    repData.insights = generarInsights(repData);
+    renderInsights(repData.insights);
     renderReporte(repData);
 
     // Guardar automáticamente en el navegador
@@ -1985,6 +2216,10 @@
   $("btnCloudPush").addEventListener("click", subirLocalesNube);
   $("btnCloudSync").addEventListener("click", cloudSync);
   $("cloudModal").addEventListener("click", (e) => { if(e.target === $("cloudModal")) cerrarModalNube(); });
+
+  // Resolución de conflictos de sincronización
+  $("btnConflictoRecargar").addEventListener("click", resolverConflictoRecargar);
+  $("btnConflictoForzar").addEventListener("click", resolverConflictoForzar);
 
   cargarConfigNube();
 
