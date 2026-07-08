@@ -322,32 +322,86 @@
     .cmpEmpty b{ color:var(--text); }
     .cmpEmpty[hidden]{ display:none; }
 
-    /* Exportar / impresión */
-    .print-only{ display:none; }
-    @media print{
-      .no-print{ display:none !important; }
-      body{ background:#fff !important; color:#111 !important; }
-      header{ padding:0 0 8px; max-width:none; }
-      h1{ color:#111; font-size:18px; }
-      .subtitle{ color:#444; }
-      main{ display:block; max-width:none; padding:0; }
-      .card{ box-shadow:none; }
-      .resumenFinal{ grid-column:auto; border:1px solid #ccc; background:#fff; }
-      .resumenFinal h2{ color:#111; }
-      .bigKpi{ background:#f5f5fa !important; border:1px solid #ddd; }
-      .bigKpi .label{ color:#555; }
-      .bigKpi .value{ color:#111 !important; }
-      .bigKpi.good .value{ color:#0a7f5f !important; }
-      .bigKpi.bad .value{ color:#c0324c !important; }
-      .gastoSplitLabels, .gastoSplitLabels b, .gastoSplit .small{ color:#222 !important; }
-      .stackBar{ border:1px solid #ccc; }
-      .personTable th, .personTable td{ color:#111 !important; border-color:#ddd; }
-      .personTable td.d{ color:#5a3fff !important; }
-      .personTable td.a{ color:#0a7f5f !important; }
-      .tag{ color:#333; border-color:#ccc; background:#fff; }
-      .print-only{ display:block; }
-      .printFooter{ margin-top:12px; color:#555; font-size:12px; }
+    /* ===== Reporte exportable (solo visible al imprimir / guardar PDF) ===== */
+    .reportSheet{ display:none; }
+    .reportSheet{
+      --rp-ink:#141a2e; --rp-muted:#5b6180; --rp-line:#dce0f0;
+      --rp-violet:#6b4eff; --rp-green:#0a7f5f; --rp-red:#c0324c;
+      --rp-amber:#a9761f; --rp-blue:#2f6fb0; --rp-soft:#f7f8fc;
+      color:var(--rp-ink); line-height:1.42;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
+    .reportSheet, .reportSheet *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+    .rpt-head{
+      display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+      padding-bottom:12px; margin-bottom:14px; border-bottom:3px solid var(--rp-violet);
+    }
+    .rpt-title{ font-size:21px; font-weight:800; letter-spacing:.2px; }
+    .rpt-sub{ color:var(--rp-muted); font-size:12px; margin-top:3px; }
+    .rpt-month{ text-align:right; }
+    .rpt-month-name{ font-size:17px; font-weight:800; color:var(--rp-violet); }
+    .rpt-gen{ color:var(--rp-muted); font-size:11px; margin-top:3px; }
+
+    .rpt-kpis{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px; break-inside:avoid; }
+    .rpt-kpi{ border:1px solid var(--rp-line); border-radius:12px; padding:12px 14px; background:var(--rp-soft); }
+    .rpt-k-label{ font-size:10px; color:var(--rp-muted); text-transform:uppercase; letter-spacing:.5px; }
+    .rpt-k-value{ font-size:23px; font-weight:800; margin-top:4px; }
+    .rpt-k-sub{ font-size:10.5px; color:var(--rp-muted); margin-top:3px; }
+    .rpt-kpi.good{ background:#eafaf3; border-color:#bfe8d7; }
+    .rpt-kpi.good .rpt-k-value{ color:var(--rp-green); }
+    .rpt-kpi.bad{ background:#fdeef1; border-color:#f4c9d3; }
+    .rpt-kpi.bad .rpt-k-value{ color:var(--rp-red); }
+
+    .rpt-cols{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+    .rpt-card{ border:1px solid var(--rp-line); border-radius:12px; padding:12px 14px; background:#fff; break-inside:avoid; }
+    .rpt-card h3{
+      margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+      color:var(--rp-violet); border-bottom:1px solid var(--rp-line); padding-bottom:6px;
+    }
+
+    .rpt-table{ width:100%; border-collapse:collapse; }
+    .rpt-table th, .rpt-table td{ padding:6px 4px; text-align:right; border-bottom:1px solid var(--rp-line); font-size:12px; }
+    .rpt-table th:first-child, .rpt-table td:first-child{ text-align:left; }
+    .rpt-table thead th{ color:var(--rp-muted); font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:.3px; }
+    .rpt-table td.pos{ color:var(--rp-violet); font-weight:800; }
+
+    .rpt-bar{ height:13px; border-radius:999px; overflow:hidden; display:flex; border:1px solid var(--rp-line); background:#eef0f8; margin:4px 0 8px; }
+    .rpt-bar > span{ display:block; height:100%; }
+    .rpt-legend{ display:flex; justify-content:space-between; font-size:11px; gap:10px; flex-wrap:wrap; }
+    .rpt-swatch{ width:9px; height:9px; border-radius:3px; display:inline-block; margin-right:4px; vertical-align:middle; }
+
+    .rpt-cat{ margin-top:10px; }
+    .rpt-cat-row{ display:grid; grid-template-columns:118px 1fr 92px; gap:8px; align-items:center; font-size:11px; margin:5px 0; }
+    .rpt-cat-row > span:last-child{ text-align:right; color:var(--rp-muted); }
+    .rpt-cat-track{ height:9px; border-radius:999px; background:#eef0f8; overflow:hidden; border:1px solid var(--rp-line); }
+    .rpt-cat-fill{ height:100%; }
+
+    .rpt-prog{ height:13px; border-radius:999px; overflow:hidden; background:#eef0f8; border:1px solid var(--rp-line); margin:6px 0; }
+    .rpt-prog > span{ display:block; height:100%; background:var(--rp-green); }
+    .rpt-kv{ display:flex; justify-content:space-between; gap:10px; font-size:12px; padding:3px 0; }
+    .rpt-kv .k{ color:var(--rp-muted); }
+
+    .rpt-cmp-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:12px; padding:5px 0; border-bottom:1px dashed var(--rp-line); }
+    .rpt-cmp-row:last-child{ border-bottom:none; }
+    .rpt-cmp-delta.up-good{ color:var(--rp-green); font-weight:800; }
+    .rpt-cmp-delta.up-bad{ color:var(--rp-red); font-weight:800; }
+    .rpt-cmp-delta.neutral{ color:var(--rp-muted); }
+    .rpt-cmp-sub{ color:var(--rp-muted); font-size:10.5px; }
+
+    .rpt-insight{
+      border:1px solid var(--rp-line); border-left:4px solid var(--rp-violet);
+      border-radius:10px; background:#f4f2ff; padding:11px 13px; font-size:12px; margin-bottom:12px; break-inside:avoid;
+    }
+    .rpt-insight b{ color:var(--rp-ink); }
+    .rpt-foot{ text-align:center; color:var(--rp-muted); font-size:10px; border-top:1px solid var(--rp-line); padding-top:8px; }
+
+    @media print{
+      header, .toolbar, .alertaWrap, main{ display:none !important; }
+      body{ background:#fff !important; color:var(--rp-ink) !important; }
+      .reportSheet{ display:block !important; max-width:none; margin:0; padding:0; }
+    }
+    @page{ margin:12mm; }
   </style>
 </head>
 
@@ -444,7 +498,6 @@
         </tr>
       </tbody>
     </table>
-    <div class="printFooter print-only" id="printFooter"></div>
   </section>
 
   <!-- COMPARATIVA VS MES ANTERIOR -->
@@ -859,6 +912,87 @@
   </aside>
 </main>
 
+<!-- ===== VISTA DE REPORTE (solo impresión / PDF) ===== -->
+<section id="reportSheet" class="reportSheet" aria-hidden="true">
+  <div class="rpt-head">
+    <div>
+      <div class="rpt-title">💰 Reporte de Presupuesto Mensual</div>
+      <div class="rpt-sub">Demian &amp; Ana Pau · Resumen financiero del mes</div>
+    </div>
+    <div class="rpt-month">
+      <div class="rpt-month-name" id="rptMonth">—</div>
+      <div class="rpt-gen" id="rptGen">—</div>
+    </div>
+  </div>
+
+  <div class="rpt-kpis">
+    <div class="rpt-kpi">
+      <div class="rpt-k-label">Ingreso total</div>
+      <div class="rpt-k-value" id="rptIncome">$0</div>
+      <div class="rpt-k-sub">Demian + Ana Pau</div>
+    </div>
+    <div class="rpt-kpi">
+      <div class="rpt-k-label">Gasto total</div>
+      <div class="rpt-k-value" id="rptExpense">$0</div>
+      <div class="rpt-k-sub" id="rptExpenseSub">Fijos + variables</div>
+    </div>
+    <div class="rpt-kpi" id="rptFreeCard">
+      <div class="rpt-k-label">Queda libre (ahorro/inversión)</div>
+      <div class="rpt-k-value" id="rptFree">$0</div>
+      <div class="rpt-k-sub" id="rptFreeSub">—</div>
+    </div>
+  </div>
+
+  <div class="rpt-cols">
+    <div class="rpt-card">
+      <h3>Reparto por persona</h3>
+      <table class="rpt-table">
+        <thead>
+          <tr><th>Persona</th><th>Paga</th><th>Le queda libre</th><th id="rptInvestHead">Invertir (30%)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Demian</td><td id="rptPayD">$0</td><td id="rptFreeD">$0</td><td class="pos" id="rptInvD">$0</td></tr>
+          <tr><td>Ana Pau</td><td id="rptPayA">$0</td><td id="rptFreeA">$0</td><td class="pos" id="rptInvA">$0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rpt-card">
+      <h3>Distribución de gastos</h3>
+      <div class="rpt-bar">
+        <span id="rptBarFixed" style="width:50%; background:var(--rp-blue)"></span>
+        <span id="rptBarVar" style="width:50%; background:var(--rp-amber)"></span>
+      </div>
+      <div class="rpt-legend">
+        <span><span class="rpt-swatch" style="background:var(--rp-blue)"></span>Fijos: <b id="rptFixed">$0</b> (<span id="rptFixedPct">0</span>%)</span>
+        <span><span class="rpt-swatch" style="background:var(--rp-amber)"></span>Variables: <b id="rptVar">$0</b> (<span id="rptVarPct">0</span>%)</span>
+      </div>
+      <div class="rpt-cat" id="rptCats"></div>
+    </div>
+  </div>
+
+  <div class="rpt-cols">
+    <div class="rpt-card">
+      <h3>Fondo de emergencia</h3>
+      <div class="rpt-kv"><span class="k">Meta</span><span id="rptFundGoal">$0</span></div>
+      <div class="rpt-kv"><span class="k">Saldo actual</span><span id="rptFundCur">$0</span></div>
+      <div class="rpt-prog"><span id="rptFundBar" style="width:0%"></span></div>
+      <div class="rpt-kv"><span class="k">Progreso</span><span id="rptFundPct">0%</span></div>
+      <div class="rpt-kv"><span class="k">Aportación mensual</span><span id="rptFundAporte">$0</span></div>
+      <div class="rpt-kv"><span class="k" id="rptFundEta">—</span><span></span></div>
+    </div>
+
+    <div class="rpt-card">
+      <h3>Comparativa vs mes anterior</h3>
+      <div id="rptCmpBody"></div>
+    </div>
+  </div>
+
+  <div class="rpt-insight" id="rptInsight">—</div>
+
+  <div class="rpt-foot">Generado por el Dashboard de Presupuesto Mensual · <span id="rptFootDate"></span></div>
+</section>
+
 <script>
   const $ = (id) => document.getElementById(id);
 
@@ -1008,6 +1142,115 @@
     const grid = $("cmpGrid"), empty = $("cmpEmpty");
     if(grid) grid.hidden = !hayComp;
     if(empty) empty.hidden = hayComp;
+  }
+
+  // Frase breve tipo "insight" del mes para el reporte
+  function insightDelMes(d){
+    const varPct = d.expense > 0 ? Math.round((d.variables / d.expense) * 100) : 0;
+    const pctAhorro = d.savingRate * 100;
+    let s;
+    if(d.free < 0){
+      s = `Este mes gastaron <b>${dinero(-d.free)} más</b> de lo que ingresaron. Conviene recortar gastos variables (${varPct}% del gasto: diversión, despensa, salidas).`;
+    } else if(pctAhorro >= 30){
+      s = `Excelente mes: ahorran el <b>${pctAhorro.toFixed(0)}%</b> de sus ingresos y les quedan <b>${dinero(d.free)}</b> libres para invertir.`;
+    } else if(pctAhorro >= 20){
+      s = `Buen mes: ahorran el <b>${pctAhorro.toFixed(0)}%</b> (${dinero(d.free)} libres). Mantengan el ritmo de inversión.`;
+    } else {
+      s = `Mes ajustado: ahorran el <b>${pctAhorro.toFixed(0)}%</b>. Los gastos variables son ${varPct}% del total; ahí está el mayor margen de ajuste.`;
+    }
+    if(d.cmp){
+      const dg = d.expense - d.cmp.prev.gastos;
+      if(Math.abs(dg) >= 1){
+        s += dg > 0
+          ? ` Gastaron <b>${dinero(dg)} más</b> que ${d.cmp.prevName}.`
+          : ` Gastaron <b>${dinero(-dg)} menos</b> que ${d.cmp.prevName}.`;
+      }
+    }
+    return s;
+  }
+
+  // Rellena la vista de reporte (solo se ve al imprimir / guardar PDF)
+  function renderReporte(d){
+    if(!$("reportSheet")) return;
+
+    txt("rptMonth", d.mes);
+
+    txt("rptIncome", dinero(d.income));
+    txt("rptExpense", dinero(d.expense));
+    txt("rptExpenseSub", `Fijos ${dinero(d.fijos)} · Variables ${dinero(d.variables)}`);
+    txt("rptFree", dinero(d.free));
+    txt("rptFreeSub", `Tasa de ahorro ${(d.savingRate*100).toFixed(1)}% · Estado: ${d.estado}`);
+    const freeCard = $("rptFreeCard");
+    if(freeCard){ freeCard.classList.remove("good","bad"); freeCard.classList.add(d.free < 0 ? "bad" : "good"); }
+
+    txt("rptInvestHead", `Invertir (${d.invPct}%)`);
+    txt("rptPayD", dinero(d.payD));
+    txt("rptPayA", dinero(d.payA));
+    txt("rptFreeD", dinero(d.dispD));
+    txt("rptFreeA", dinero(d.dispA));
+    txt("rptInvD", dinero(d.invD));
+    txt("rptInvA", dinero(d.invA));
+
+    // Fijos vs variables
+    const pf = d.expense > 0 ? (d.fijos / d.expense) * 100 : 0;
+    const pv = d.expense > 0 ? (d.variables / d.expense) * 100 : 0;
+    const bf = $("rptBarFixed"), bv = $("rptBarVar");
+    if(bf) bf.style.width = pf.toFixed(1) + "%";
+    if(bv) bv.style.width = pv.toFixed(1) + "%";
+    txt("rptFixed", dinero(d.fijos)); txt("rptFixedPct", pf.toFixed(0));
+    txt("rptVar", dinero(d.variables)); txt("rptVarPct", pv.toFixed(0));
+
+    // Categorías (barras proporcionales)
+    const catsEl = $("rptCats");
+    if(catsEl){
+      catsEl.innerHTML = d.cats.map(c => {
+        const p = d.expense > 0 ? (c.value / d.expense) * 100 : 0;
+        return `<div class="rpt-cat-row">` +
+          `<span>${c.label}</span>` +
+          `<span class="rpt-cat-track"><span class="rpt-cat-fill" style="width:${p.toFixed(1)}%; background:${c.color}"></span></span>` +
+          `<span><b>${dinero(c.value)}</b> · ${p.toFixed(0)}%</span>` +
+        `</div>`;
+      }).join("");
+    }
+
+    // Fondo de emergencia
+    txt("rptFundGoal", dinero(d.fund.meta));
+    txt("rptFundCur", dinero(d.fund.actual));
+    const fb = $("rptFundBar");
+    if(fb) fb.style.width = Math.max(0, Math.min(100, d.fund.pct)).toFixed(1) + "%";
+    txt("rptFundPct", `${Math.max(0, d.fund.pct).toFixed(1)}%`);
+    txt("rptFundAporte", `${dinero(d.fund.aporte)} / mes`);
+    txt("rptFundEta", d.fund.eta && d.fund.eta !== "—" ? d.fund.eta : "Sin aportaciones definidas");
+
+    // Comparativa
+    const cmpBody = $("rptCmpBody");
+    if(cmpBody){
+      if(d.cmp){
+        const filas = [
+          {label:"Ingreso total", prev:d.cmp.prev.ingresos,  cur:d.cmp.cur.ingresos,  better:true},
+          {label:"Gasto total",   prev:d.cmp.prev.gastos,    cur:d.cmp.cur.gastos,    better:false},
+          {label:"Queda libre",   prev:d.cmp.prev.restante,  cur:d.cmp.cur.restante,  better:true},
+          {label:"Diversión",     prev:d.cmp.prev.diversion, cur:d.cmp.cur.diversion, better:false},
+          {label:"Despensa",      prev:d.cmp.prev.despensa,  cur:d.cmp.cur.despensa,  better:false}
+        ];
+        cmpBody.innerHTML =
+          `<div class="rpt-cmp-sub" style="margin-bottom:6px">Contra ${d.cmp.prevFull}</div>` +
+          filas.map(f => {
+            const diff = f.cur - f.prev;
+            const flecha = diff > 0 ? "▲" : (diff < 0 ? "▼" : "▬");
+            const cls = diff === 0 ? "neutral" : ((diff > 0) === f.better ? "up-good" : "up-bad");
+            const signo = diff > 0 ? "+" : (diff < 0 ? "−" : "");
+            return `<div class="rpt-cmp-row"><span>${f.label}</span>` +
+              `<span class="rpt-cmp-delta ${cls}">${flecha} ${signo}${dinero(Math.abs(diff))}</span></div>`;
+          }).join("");
+      } else {
+        cmpBody.innerHTML = `<div class="rpt-cmp-sub">${d.cmpEmptyMsg}</div>`;
+      }
+    }
+
+    txt("rptInsight", "");
+    const insightEl = $("rptInsight");
+    if(insightEl) insightEl.innerHTML = d.insight;
   }
 
   function valoresPorDefecto(){
@@ -1383,6 +1626,37 @@
       {label:"Cuidado personal", color:"#5cc2ff", value: personal}
     ]);
 
+    // ---- Datos para la vista de reporte (impresión / PDF) ----
+    const rPrevKey  = mesAnteriorKey(mesActivo);
+    const rPrevData = store.months[rPrevKey];
+    const repData = {
+      mes: nombreMes(mesActivo),
+      income: ingresos, expense: gastos, free: restante,
+      savingRate: tasaAhorro, estado,
+      invPct,
+      payD: parteD, payA: parteA,
+      dispD: dispDemian, dispA: dispAna,
+      invD, invA,
+      fijos: totActual.fijos, variables: totActual.variables,
+      cats: [
+        {label:"Renta + servicios", value: leerNumero("rent") + leerNumero("services"), color:"#2f6fb0"},
+        {label:"Suscripciones",     value: suscripciones, color:"#3f8fd8"},
+        {label:"Despensa",          value: leerNumero("groceries"), color:"#a9761f"},
+        {label:"Diversión",         value: diversion, color:"#c98b2e"},
+        {label:"Cuidado personal",  value: personal, color:"#8a5cc0"}
+      ],
+      fund: { meta, actual, pct: pctFondo, aporte: aporteTotal, eta },
+      cmp: rPrevData ? {
+        prev: totalesDe(rPrevData),
+        cur: totActual,
+        prevName: nombreMes(rPrevKey).split(" ")[0],
+        prevFull: nombreMes(rPrevKey)
+      } : null,
+      cmpEmptyMsg: rPrevData ? "" : `Aún no hay datos de ${nombreMes(rPrevKey)}. Guarda ese mes para incluir la comparación en el reporte.`
+    };
+    repData.insight = insightDelMes(repData);
+    renderReporte(repData);
+
     // Guardar automáticamente en el navegador
     guardar();
   }
@@ -1408,13 +1682,13 @@
     calcular();
   }
 
-  // Prepara el pie de página e imprime (o guarda como PDF) el resumen del mes
+  // Prepara la vista de reporte e imprime (o guarda como PDF)
   function exportarResumen(){
-    const foot = $("printFooter");
-    if(foot){
-      const hoy = new Date().toLocaleDateString("es-MX", { day:"2-digit", month:"long", year:"numeric" });
-      foot.textContent = `Resumen de ${nombreMes(mesActivo)} · Generado el ${hoy}`;
-    }
+    calcular(); // asegura que el reporte tenga los valores actuales del mes
+    const hoy = new Date().toLocaleDateString("es-MX", { weekday:"long", day:"2-digit", month:"long", year:"numeric" });
+    const hoyCap = hoy.charAt(0).toUpperCase() + hoy.slice(1);
+    txt("rptGen", `Generado el ${hoyCap}`);
+    txt("rptFootDate", hoyCap);
     window.print();
   }
 
