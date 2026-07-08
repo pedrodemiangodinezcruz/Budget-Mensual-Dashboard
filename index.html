@@ -170,6 +170,36 @@
     .splitLine .amt{color:var(--text); font-weight:600}
     .splitLine .amt.d{color:var(--accent)}
     .splitLine .amt.a{color:var(--good)}
+
+    /* Tabla: disponible para invertir por persona */
+    .investTable{
+      width:100%;
+      border-collapse:collapse;
+      font-size:12px;
+      margin-top:6px;
+    }
+    .investTable th, .investTable td{
+      padding:8px 6px;
+      text-align:right;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .investTable th:first-child, .investTable td:first-child{
+      text-align:left;
+      color:var(--muted);
+    }
+    .investTable thead th{
+      color:var(--muted);
+      font-weight:600;
+    }
+    .investTable thead th.d{color:var(--accent)}
+    .investTable thead th.a{color:var(--good)}
+    .investTable tr.total td{
+      font-weight:700;
+      color:var(--text);
+      border-top:1px solid rgba(255,255,255,.14);
+    }
+    .investTable td.d{color:var(--accent)}
+    .investTable td.a{color:var(--good)}
   </style>
 </head>
 
@@ -426,6 +456,60 @@
       </div>
     </div>
 
+    <div class="card" style="padding:12px; background: rgba(0,0,0,.10); margin-bottom:10px">
+      <h2>💵 Disponible para invertir por persona</h2>
+      <div class="small">Ingreso − parte de gastos − aportación al fondo = lo que le queda a cada quien para invertir.</div>
+      <div style="height:8px"></div>
+      <table class="investTable">
+        <thead>
+          <tr>
+            <th>Concepto</th>
+            <th class="d">Demian</th>
+            <th class="a">Ana Pau</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Ingreso</td>
+            <td class="d" id="tblIncomeD">$0</td>
+            <td class="a" id="tblIncomeA">$0</td>
+            <td id="tblIncomeT">$0</td>
+          </tr>
+          <tr>
+            <td>− Parte de gastos</td>
+            <td class="d" id="tblShareD">$0</td>
+            <td class="a" id="tblShareA">$0</td>
+            <td id="tblShareT">$0</td>
+          </tr>
+          <tr>
+            <td>− Aportación al fondo</td>
+            <td class="d" id="tblFundD">$0</td>
+            <td class="a" id="tblFundA">$0</td>
+            <td id="tblFundT">$0</td>
+          </tr>
+          <tr class="total">
+            <td>= Disponible para invertir</td>
+            <td class="d" id="tblAvailD">$0</td>
+            <td class="a" id="tblAvailA">$0</td>
+            <td id="tblAvailT">$0</td>
+          </tr>
+          <tr>
+            <td>Inversión mínima (30%)</td>
+            <td class="d" id="tblMinD">$0</td>
+            <td class="a" id="tblMinA">$0</td>
+            <td id="tblMinT">$0</td>
+          </tr>
+          <tr>
+            <td>Margen extra (sobre el mínimo)</td>
+            <td class="d" id="tblExtraD">$0</td>
+            <td class="a" id="tblExtraA">$0</td>
+            <td id="tblExtraT">$0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
       <h2>📅 Seguimiento semanal (Diversión + Despensa)</h2>
       <div class="small">Objetivo por semana: <span id="weeklyTargetLabel">$6,000</span></div>
@@ -565,7 +649,9 @@
     // Fondo emergencia
     const meta = leerNumero("emergencyGoal");
     const actual = leerNumero("emergencyCurrent");
-    const aporteTotal = leerNumero("emergencyDemian") + leerNumero("emergencyAna");
+    const aporteDemian = leerNumero("emergencyDemian");
+    const aporteAna = leerNumero("emergencyAna");
+    const aporteTotal = aporteDemian + aporteAna;
 
     const pctFondo = meta > 0 ? (actual / meta) * 100 : 0;
     $("emergencyLabel").textContent = `Progreso: ${dinero(actual)} / ${dinero(meta)} (${Math.max(0, pctFondo).toFixed(1)}%)`;
@@ -582,10 +668,16 @@
     const eMode = pctFondo >= 100 ? "good" : (pctFondo >= 50 ? "warn" : "bad");
     setProgreso($("emergencyBar"), pctFondo, eMode);
 
-    // Inversión mínima (30%)
+    // Inversión mínima (30%) y disponible para invertir por persona
     const tasaInv = 0.30;
-    const restanteDemian = leerNumero("incomeDemian") - parteD - leerNumero("emergencyDemian");
-    const restanteAna = leerNumero("incomeAna") - parteA - leerNumero("emergencyAna");
+    const ingresoDemian = leerNumero("incomeDemian");
+    const ingresoAna = leerNumero("incomeAna");
+
+    const restanteDemian = ingresoDemian - parteD - aporteDemian;
+    const restanteAna = ingresoAna - parteA - aporteAna;
+
+    const dispDemian = Math.max(0, restanteDemian);
+    const dispAna = Math.max(0, restanteAna);
 
     const invD = Math.max(0, restanteDemian * tasaInv);
     const invA = Math.max(0, restanteAna * tasaInv);
@@ -593,6 +685,31 @@
     $("investDemian").textContent = dinero(invD);
     $("investAna").textContent = dinero(invA);
     $("investTotal").textContent = dinero(invD + invA);
+
+    // Tabla: disponible para invertir por persona
+    $("tblIncomeD").textContent = dinero(ingresoDemian);
+    $("tblIncomeA").textContent = dinero(ingresoAna);
+    $("tblIncomeT").textContent = dinero(ingresoDemian + ingresoAna);
+
+    $("tblShareD").textContent = dinero(parteD);
+    $("tblShareA").textContent = dinero(parteA);
+    $("tblShareT").textContent = dinero(parteD + parteA);
+
+    $("tblFundD").textContent = dinero(aporteDemian);
+    $("tblFundA").textContent = dinero(aporteAna);
+    $("tblFundT").textContent = dinero(aporteTotal);
+
+    $("tblAvailD").textContent = dinero(dispDemian);
+    $("tblAvailA").textContent = dinero(dispAna);
+    $("tblAvailT").textContent = dinero(dispDemian + dispAna);
+
+    $("tblMinD").textContent = dinero(invD);
+    $("tblMinA").textContent = dinero(invA);
+    $("tblMinT").textContent = dinero(invD + invA);
+
+    $("tblExtraD").textContent = dinero(Math.max(0, dispDemian - invD));
+    $("tblExtraA").textContent = dinero(Math.max(0, dispAna - invA));
+    $("tblExtraT").textContent = dinero(Math.max(0, dispDemian - invD) + Math.max(0, dispAna - invA));
 
     // Seguimiento semanal
     const objetivoSemana = DEFAULTS.weeklyTarget;
