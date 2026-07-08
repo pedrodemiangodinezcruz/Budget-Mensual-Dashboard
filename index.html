@@ -397,11 +397,44 @@
     .rpt-foot{ text-align:center; color:var(--rp-muted); font-size:10px; border-top:1px solid var(--rp-line); padding-top:8px; }
 
     @media print{
-      header, .toolbar, .alertaWrap, main{ display:none !important; }
+      header, .toolbar, .alertaWrap, main, .modalOverlay{ display:none !important; }
       body{ background:#fff !important; color:var(--rp-ink) !important; }
       .reportSheet{ display:block !important; max-width:none; margin:0; padding:0; }
     }
     @page{ margin:12mm; }
+
+    /* ===== Nube: estado de sincronización + modal de configuración ===== */
+    #cloudStatus{ white-space:nowrap; }
+    .cloud-idle{ color:var(--muted); }
+    .cloud-saving, .cloud-pending{ color:var(--warn); border-color: rgba(255,204,102,.45); }
+    .cloud-ok{ color:var(--good); border-color: rgba(49,208,170,.45); }
+    .cloud-error{ color:var(--bad); border-color: rgba(255,92,122,.5); }
+
+    .modalOverlay{
+      position:fixed; inset:0; z-index:50;
+      background: rgba(4,7,18,.66);
+      display:flex; align-items:center; justify-content:center; padding:18px;
+    }
+    .modalOverlay[hidden]{ display:none; }
+    .modalCard{
+      width:min(560px, 96vw); max-height:90vh; overflow:auto;
+      background: var(--card); border:1px solid var(--border);
+      border-radius:16px; padding:18px; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .modalCard h3{ margin:0 0 4px; font-size:16px; }
+    .modalCard .mHint{ color:var(--muted); font-size:12px; line-height:1.5; }
+    .modalField{ margin-top:12px; }
+    .modalField label{ display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+    .modalField input{
+      width:100%; padding:9px 10px; border-radius:10px;
+      border:1px solid var(--border); background: rgba(0,0,0,.25); color:var(--text); outline:none;
+    }
+    .modalField input:focus{ border-color: rgba(124,92,255,.55); box-shadow:0 0 0 3px rgba(124,92,255,.15); }
+    .modalActions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
+    .modalStatus{ margin-top:12px; font-size:12px; min-height:16px; color:var(--muted); }
+    .modalHelp{ margin-top:14px; font-size:11.5px; color:var(--muted); line-height:1.55;
+      border-top:1px solid var(--border); padding-top:12px; }
+    .modalHelp code{ background: rgba(255,255,255,.06); padding:1px 5px; border-radius:6px; }
   </style>
 </head>
 
@@ -428,6 +461,9 @@
   </div>
   <div class="monthMeta">
     <span class="small" id="monthHint">—</span>
+    <span class="chip cloud-idle" id="cloudStatus">Modo local</span>
+    <button id="btnCloudSync" class="navBtn" title="Traer los últimos datos compartidos de Google Sheets">🔄 Sincronizar</button>
+    <button id="btnCloudConfig" class="navBtn" title="Configurar la conexión con Google Sheets">☁️ Nube</button>
     <button id="btnExport" class="navBtn" title="Imprimir o guardar como PDF el resumen del mes">🖨️ Exportar resumen</button>
   </div>
 </div>
@@ -912,6 +948,36 @@
   </aside>
 </main>
 
+<!-- ===== MODAL: configuración de nube (Google Sheets) ===== -->
+<div class="modalOverlay" id="cloudModal" hidden>
+  <div class="modalCard">
+    <h3>☁️ Sincronización con Google Sheets</h3>
+    <div class="mHint">Comparte los datos entre dos dispositivos usando una Google Sheet + Apps Script. La URL y el token se guardan <b>solo en este navegador</b> (no en el código), así no expones secretos en el repositorio.</div>
+
+    <div class="modalField">
+      <label for="cloudUrlInput">URL del Web App (termina en <code>/exec</code>)</label>
+      <input id="cloudUrlInput" type="text" placeholder="https://script.google.com/macros/s/AKfyc.../exec" />
+    </div>
+    <div class="modalField">
+      <label for="cloudTokenInput">Token de acceso (opcional, protege la escritura)</label>
+      <input id="cloudTokenInput" type="text" placeholder="una-frase-secreta-compartida" />
+    </div>
+
+    <div class="modalActions">
+      <button id="btnCloudTest">Probar conexión</button>
+      <button id="btnCloudSave">Guardar y conectar</button>
+      <button id="btnCloudPush" class="danger" title="Sube tus meses locales a la hoja compartida (una sola vez)">Subir datos locales</button>
+      <button id="btnCloudClose">Cerrar</button>
+    </div>
+
+    <div class="modalStatus" id="cloudModalStatus"></div>
+
+    <div class="modalHelp">
+      <b>Pasos rápidos:</b> 1) Crea una Google Sheet. 2) Extensiones → Apps Script y pega <code>Code.gs</code>. 3) Implementar → Nueva implementación → <b>Aplicación web</b> · Ejecutar como: <b>Yo</b> · Con acceso: <b>Cualquier usuario</b>. 4) Copia aquí la URL que termina en <code>/exec</code> y pulsa <b>Guardar y conectar</b>. Guía completa: <code>GUIA-GOOGLE-SHEETS.md</code> del repositorio.
+    </div>
+  </div>
+</div>
+
 <!-- ===== VISTA DE REPORTE (solo impresión / PDF) ===== -->
 <section id="reportSheet" class="reportSheet" aria-hidden="true">
   <div class="rpt-head">
@@ -1318,8 +1384,11 @@
     if(!key){ sincronizarUIMes(); return; }
     if(key === mesActivo){ sincronizarUIMes(); return; }
 
-    guardar(); // conserva el mes que dejamos
+    const saliente = mesActivo;
+    guardar(); // conserva el mes que dejamos (local)
+    if(cloud.enabled && cloudPending) cloudFlush(saliente); // empuja cambios pendientes del mes saliente
 
+    let creado = false;
     if(store.months[key]){
       mesActivo = key;
       escribirFormulario(store.months[key]);
@@ -1331,10 +1400,12 @@
       mesActivo = key;
       escribirFormulario(base);
       store.months[key] = leerFormulario();
+      creado = true;
     }
 
     sincronizarUIMes();
-    calcular(); // recalcula y guarda
+    calcular(); // recalcula y guarda (local)
+    if(cloud.enabled && creado) cloudScheduleSave(mesActivo); // persiste el mes nuevo en la nube
   }
 
   function moverMes(delta){
@@ -1351,6 +1422,198 @@
     escribirFormulario(valoresPorDefecto());
     sincronizarUIMes();
     calcular();
+  }
+
+  // ===== Nube: Google Sheets vía Apps Script (almacenamiento compartido) =====
+  // La URL y el token se guardan solo en este navegador (localStorage), nunca en el código.
+  const CLOUD_KEY = "budgetDashboard.cloud";
+  const cloud = { url:"", token:"", enabled:false };
+  let cloudSaveTimer = null;
+  let cloudPending = false;
+
+  function horaCorta(){
+    return new Date().toLocaleTimeString("es-MX", { hour:"2-digit", minute:"2-digit" });
+  }
+
+  function setCloudStatus(texto, modo){
+    const el = $("cloudStatus");
+    if(el){ el.textContent = texto; el.className = "chip cloud-" + (modo || "idle"); }
+  }
+
+  function cargarConfigNube(){
+    try{
+      const raw = localStorage.getItem(CLOUD_KEY);
+      if(raw){ const c = JSON.parse(raw); cloud.url = c.url || ""; cloud.token = c.token || ""; }
+    }catch(e){}
+    cloud.enabled = !!cloud.url;
+  }
+
+  function guardarConfigNube(){
+    try{ localStorage.setItem(CLOUD_KEY, JSON.stringify({ url: cloud.url, token: cloud.token })); }catch(e){}
+    cloud.enabled = !!cloud.url;
+  }
+
+  function urlConParam(base, param){
+    return base + (base.indexOf("?") >= 0 ? "&" : "?") + param;
+  }
+
+  async function cloudFetchAll(){
+    const res = await fetch(urlConParam(cloud.url, "action=all"), { method:"GET" });
+    const data = await res.json();
+    if(!data || !data.ok) throw new Error((data && data.error) || "respuesta no válida");
+    return data.months || {};
+  }
+
+  async function cloudPostMonth(month, datos){
+    const payload = { token: cloud.token, month, data: datos };
+    // Cuerpo como texto plano => petición "simple", evita el preflight CORS de Apps Script
+    const res = await fetch(cloud.url, { method:"POST", body: JSON.stringify(payload) });
+    const data = await res.json();
+    if(!data || !data.ok) throw new Error((data && data.error) || "no se pudo guardar");
+    return data;
+  }
+
+  async function cloudPostAll(mapa){
+    const payload = { token: cloud.token, action:"saveAll", months: mapa };
+    const res = await fetch(cloud.url, { method:"POST", body: JSON.stringify(payload) });
+    const data = await res.json();
+    if(!data || !data.ok) throw new Error((data && data.error) || "no se pudo subir");
+    return data;
+  }
+
+  // Autosave con debounce: no dispara una escritura por cada tecla
+  function cloudScheduleSave(month){
+    if(!cloud.enabled) return;
+    cloudPending = true;
+    setCloudStatus("● Cambios sin guardar…", "pending");
+    clearTimeout(cloudSaveTimer);
+    const m = month || mesActivo;
+    cloudSaveTimer = setTimeout(() => cloudFlush(m), 1600);
+  }
+
+  async function cloudFlush(month){
+    if(!cloud.enabled) return;
+    clearTimeout(cloudSaveTimer);
+    const m = month || mesActivo;
+    const datos = store.months[m] || leerFormulario();
+    try{
+      setCloudStatus("Guardando en la nube…", "saving");
+      await cloudPostMonth(m, datos);
+      cloudPending = false;
+      setCloudStatus("Guardado ✓ " + horaCorta(), "ok");
+    }catch(err){
+      setCloudStatus("Error al guardar (modo local)", "error");
+    }
+  }
+
+  // ¿Está abierto el modal de configuración?
+  function modalNubeAbierto(){
+    const m = $("cloudModal");
+    return m && !m.hidden;
+  }
+
+  // Convierte un error de red/servidor en un mensaje claro para el usuario
+  function explicarErrorNube(err){
+    const msg = (err && err.message) ? err.message : String(err || "");
+    if(/unauthorized/i.test(msg)){
+      return "Token incorrecto: el del dashboard no coincide con ACCESS_TOKEN de la hoja. Iguala ambos (o deja los dos vacíos).";
+    }
+    if(/month|parameter|bad request/i.test(msg)){
+      return "El Web App respondió con una versión ANTIGUA del script (\"" + msg + "\"). Vuelve a pegar Code.gs, guarda y publica una versión NUEVA: Implementar → Gestionar implementaciones → ✏️ → Versión: «Nueva versión» → Implementar (la URL /exec no cambia).";
+    }
+    return "No se pudo conectar con Google Sheets. Revisa que la URL termine en /exec y que el acceso del despliegue sea «Cualquier usuario». (" + msg + ")";
+  }
+
+  // Trae todos los meses desde la hoja y los fusiona (la nube manda para lo compartido)
+  async function cloudSync(){
+    if(!cloud.enabled){ setCloudStatus("Modo local (sin nube)", "idle"); return; }
+    try{
+      if(cloudPending) await cloudFlush(mesActivo);
+      setCloudStatus("Sincronizando…", "saving");
+      if(modalNubeAbierto()) setModalStatus("Sincronizando…");
+      const months = await cloudFetchAll();
+      store.months = Object.assign({}, store.months, months);
+      store.activeMonth = mesActivo;
+      guardarStore(); // respaldo local
+      if(store.months[mesActivo]) escribirFormulario(store.months[mesActivo]);
+      sincronizarUIMes();
+      calcular(); // recalcula (no vuelve a marcar cambios pendientes)
+      cloudPending = false;
+      const n = Object.keys(months).length;
+      setCloudStatus("Sincronizado ✓ " + horaCorta(), "ok");
+      if(modalNubeAbierto()) setModalStatus(`Sincronizado ✓ — ${n} mes(es) en la hoja · ${horaCorta()}`, "var(--good)");
+    }catch(err){
+      setCloudStatus("Sin conexión (modo local)", "error");
+      if(modalNubeAbierto()) setModalStatus(explicarErrorNube(err), "var(--bad)");
+    }
+  }
+
+  // ---- Modal de configuración ----
+  function abrirModalNube(){
+    $("cloudUrlInput").value = cloud.url || "";
+    $("cloudTokenInput").value = cloud.token || "";
+    setModalStatus("");
+    $("cloudModal").hidden = false;
+  }
+  function cerrarModalNube(){ $("cloudModal").hidden = true; }
+  function setModalStatus(texto, color){
+    const el = $("cloudModalStatus");
+    if(el){ el.textContent = texto; el.style.color = color || "var(--muted)"; }
+  }
+
+  async function probarConexionNube(){
+    const url = $("cloudUrlInput").value.trim();
+    if(!url){ setModalStatus("Escribe la URL del Web App.", "var(--warn)"); return; }
+    if(!/\/exec\/?$/.test(url)){
+      setModalStatus("Aviso: la URL debería terminar en /exec (no /dev ni la del editor). Probando de todos modos…", "var(--warn)");
+    } else {
+      setModalStatus("Probando…");
+    }
+    try{
+      const res = await fetch(urlConParam(url, "action=ping"), { method:"GET" });
+      const data = await res.json();
+      if(data && data.ok){
+        setModalStatus("Conexión correcta ✓  Ahora pulsa «Guardar y conectar».", "var(--good)");
+      } else {
+        const errTxt = (data && data.error) ? data.error : "respuesta sin ok";
+        setModalStatus(
+          "Conecta, pero el script es una versión ANTIGUA (\"" + errTxt + "\"). Vuelve a pegar Code.gs, guarda y publica una versión NUEVA: Implementar → Gestionar implementaciones → ✏️ → Versión: «Nueva versión» → Implementar.",
+          "var(--bad)"
+        );
+      }
+    }catch(err){
+      setModalStatus("No se pudo conectar. Revisa que la URL termine en /exec y que el acceso del despliegue sea «Cualquier usuario». (" + ((err && err.message) || err) + ")", "var(--bad)");
+    }
+  }
+
+  function guardarConexionNube(){
+    cloud.url = $("cloudUrlInput").value.trim();
+    cloud.token = $("cloudTokenInput").value.trim();
+    guardarConfigNube();
+    if(cloud.enabled){
+      setModalStatus("Guardado. Conectando…");
+      cloudSync(); // actualizará este mensaje con el resultado real
+    } else {
+      setModalStatus("Configuración vacía: seguirás en modo local.", "var(--warn)");
+      setCloudStatus("Modo local (sin nube)", "idle");
+    }
+  }
+
+  async function subirLocalesNube(){
+    cloud.url = $("cloudUrlInput").value.trim();
+    cloud.token = $("cloudTokenInput").value.trim();
+    guardarConfigNube();
+    if(!cloud.enabled){ setModalStatus("Falta la URL del Web App.", "var(--warn)"); return; }
+    const meses = Object.keys(store.months);
+    if(!meses.length){ setModalStatus("No hay meses locales para subir.", "var(--warn)"); return; }
+    setModalStatus(`Subiendo ${meses.length} mes(es) a la hoja…`);
+    try{
+      await cloudPostAll(store.months);
+      setModalStatus("Datos locales subidos ✓", "var(--good)");
+      setCloudStatus("Guardado ✓ " + horaCorta(), "ok");
+    }catch(err){
+      setModalStatus("Error al subir: " + err, "var(--bad)");
+    }
   }
 
   // ---- Gráfica de dona (SVG puro, sin librerías) ----
@@ -1664,6 +1927,7 @@
   function restablecer(){
     escribirFormulario(valoresPorDefecto());
     calcular();
+    cloudScheduleSave(mesActivo);
   }
 
   function ejemploSemanal(){
@@ -1672,6 +1936,7 @@
     ponerNumero("w3", 5800);
     ponerNumero("w4", 7000);
     calcular();
+    cloudScheduleSave(mesActivo);
   }
 
   function limpiarSemanas(){
@@ -1680,6 +1945,7 @@
     ponerNumero("w3", 0);
     ponerNumero("w4", 0);
     calcular();
+    cloudScheduleSave(mesActivo);
   }
 
   // Prepara la vista de reporte e imprime (o guarda como PDF)
@@ -1697,6 +1963,7 @@
     i.addEventListener("input", () => {
       if(i.value !== "" && Number(i.value) < 0) i.value = 0; // sin negativos
       calcular();
+      cloudScheduleSave(mesActivo); // autosave con debounce hacia Google Sheets
     });
   });
   $("btnReset").addEventListener("click", restablecer);
@@ -1710,6 +1977,17 @@
   $("btnNextMonth").addEventListener("click", () => moverMes(1));
   $("btnExport").addEventListener("click", exportarResumen);
 
+  // Nube (Google Sheets)
+  $("btnCloudConfig").addEventListener("click", abrirModalNube);
+  $("btnCloudClose").addEventListener("click", cerrarModalNube);
+  $("btnCloudTest").addEventListener("click", probarConexionNube);
+  $("btnCloudSave").addEventListener("click", guardarConexionNube);
+  $("btnCloudPush").addEventListener("click", subirLocalesNube);
+  $("btnCloudSync").addEventListener("click", cloudSync);
+  $("cloudModal").addEventListener("click", (e) => { if(e.target === $("cloudModal")) cerrarModalNube(); });
+
+  cargarConfigNube();
+
   // Cargar datos: multi-mes (o migrar formato anterior); si no hay, valores por defecto
   if(cargarStore()){
     mesActivo = store.activeMonth || mesActualKey();
@@ -1722,6 +2000,14 @@
   }
   sincronizarUIMes();
   calcular();
+
+  // Luego intentar la nube (no bloquea el arranque; hace fallback a modo local)
+  if(cloud.enabled){
+    setCloudStatus("Cargando datos compartidos…", "saving");
+    cloudSync();
+  } else {
+    setCloudStatus("Modo local (sin nube)", "idle");
+  }
 </script>
 </body>
 </html>
