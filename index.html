@@ -26,6 +26,7 @@
                   radial-gradient(900px 600px at 100% 10%, rgba(49,208,170,.12), transparent 55%),
                   var(--bg);
       color:var(--text);
+      color-scheme: dark;
     }
     header{
       padding:24px 20px 8px;
@@ -230,6 +231,57 @@
     .legendDot{ width:10px; height:10px; border-radius:3px; flex:0 0 auto; }
     .legendLabel{ color:var(--text); flex:1 1 auto; }
     .legendVal{ color:var(--muted); white-space:nowrap; }
+
+    /* Barra de selección de mes */
+    .toolbar{
+      max-width:1100px;
+      margin:0 auto;
+      padding:12px 20px 0;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .monthPickerWrap{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .monthEmoji{ font-size:18px; }
+    .monthLabel{ font-weight:800; letter-spacing:.2px; }
+    .monthMeta{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .navBtn{ padding:8px 11px; font-size:13px; }
+    input[type="month"]{
+      padding:9px 10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      outline:none;
+      color-scheme: dark;
+    }
+    input[type="month"]:focus{ border-color: rgba(124,92,255,.55); box-shadow: 0 0 0 3px rgba(124,92,255,.15); }
+
+    /* Resumen final destacado */
+    .resumenFinal{ grid-column: 1 / -1; border-color: rgba(124,92,255,.35); }
+    .resumenGrid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
+    @media (max-width: 640px){ .resumenGrid{ grid-template-columns:1fr; } }
+    .bigKpi{
+      background: rgba(0,0,0,.20);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px 16px;
+    }
+    .bigKpi .label{ font-size:12px; color:var(--muted); }
+    .bigKpi .value{ font-size:26px; font-weight:800; margin-top:6px; letter-spacing:.3px; }
+    .bigKpi.good .value{ color:var(--good); }
+    .bigKpi.bad .value{ color:var(--bad); }
+    .personTable{ width:100%; border-collapse:collapse; font-size:13px; margin-top:14px; }
+    .personTable th, .personTable td{
+      padding:10px 8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .personTable th:first-child, .personTable td:first-child{ text-align:left; }
+    .personTable thead th{ color:var(--muted); font-weight:600; }
+    .personTable td.strong{ font-weight:700; }
+    .personTable td.d{ color:var(--accent); }
+    .personTable td.a{ color:var(--good); }
   </style>
 </head>
 
@@ -242,9 +294,22 @@
   <div class="chiprow">
     <div class="chip" id="chipSplit">Regla: división 75% / 25%</div>
     <div class="chip">Meta fondo: 50,000</div>
-    <div class="chip">Inversión mínima: 30% del restante</div>
+    <div class="chip" id="chipInvest">Inversión mínima: 30% del restante</div>
   </div>
 </header>
+
+<div class="toolbar">
+  <div class="monthPickerWrap">
+    <span class="monthEmoji">📅</span>
+    <button id="btnPrevMonth" class="navBtn" title="Mes anterior" aria-label="Mes anterior">◀</button>
+    <input id="monthPicker" type="month" aria-label="Seleccionar mes" />
+    <button id="btnNextMonth" class="navBtn" title="Mes siguiente" aria-label="Mes siguiente">▶</button>
+    <span class="monthLabel" id="monthLabel">—</span>
+  </div>
+  <div class="monthMeta">
+    <span class="small" id="monthHint">—</span>
+  </div>
+</div>
 
 <div class="alertaWrap">
   <div id="alertaExceso" class="alerta" hidden>
@@ -253,6 +318,53 @@
 </div>
 
 <main>
+  <!-- RESUMEN FINAL DESTACADO -->
+  <section class="card resumenFinal">
+    <h2>
+      🧾 Resumen del mes
+      <span class="tag" id="resumenMesTag">—</span>
+    </h2>
+    <div class="resumenGrid">
+      <div class="bigKpi">
+        <div class="label">Ingreso total</div>
+        <div class="value" id="sumIncome">$0</div>
+      </div>
+      <div class="bigKpi">
+        <div class="label">Gasto total</div>
+        <div class="value" id="sumExpense">$0</div>
+      </div>
+      <div class="bigKpi" id="sumFreeCard">
+        <div class="label">Queda libre (ahorro/inversión)</div>
+        <div class="value" id="sumFree">$0</div>
+      </div>
+    </div>
+
+    <table class="personTable">
+      <thead>
+        <tr>
+          <th>Persona</th>
+          <th>Paga</th>
+          <th>Le queda libre</th>
+          <th>Debería invertir (<span id="sumInvestPct">30</span>%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Demian</td>
+          <td id="sumPayD">$0</td>
+          <td id="sumFreeD">$0</td>
+          <td class="strong d" id="sumInvestD">$0</td>
+        </tr>
+        <tr>
+          <td>Ana Pau</td>
+          <td id="sumPayA">$0</td>
+          <td id="sumFreeA">$0</td>
+          <td class="strong a" id="sumInvestA">$0</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
   <!-- COLUMNA IZQUIERDA -->
   <section class="card">
     <h2>
@@ -509,9 +621,16 @@
     </div>
 
     <div class="card" style="padding:12px; background: rgba(0,0,0,.10); margin-bottom:10px">
-      <h2>📈 Inversión mínima (30%)</h2>
+      <h2>📈 Inversión mínima (<span id="investPctTitle">30</span>%)</h2>
       <div class="small">Se calcula después de pagar su parte proporcional + su aportación al fondo.</div>
       <div style="height:8px"></div>
+      <div class="row">
+        <div>
+          <div class="name">% mínimo de inversión</div>
+          <div class="muted">Aplica a lo que le queda a cada quien</div>
+        </div>
+        <input id="investPct" type="number" min="0" max="100" step="1" value="30" style="width:90px" />
+      </div>
       <div class="row">
         <div class="name">Mínimo Demian</div>
         <div class="muted" id="investDemian">$0</div>
@@ -568,7 +687,7 @@
             <td id="tblAvailT">$0</td>
           </tr>
           <tr>
-            <td>Inversión mínima (30%)</td>
+            <td>Inversión mínima (<span id="investPctRow">30</span>%)</td>
             <td class="d" id="tblMinD">$0</td>
             <td class="a" id="tblMinA">$0</td>
             <td id="tblMinT">$0</td>
@@ -623,6 +742,9 @@
     return v.toLocaleString("es-MX", {style:"currency", currency:"MXN", maximumFractionDigits:0});
   }
 
+  // Escribe texto solo si el elemento existe (evita romper cálculos)
+  function txt(id, value){ const el = $(id); if(el) el.textContent = value; }
+
   // Valores por defecto basados en tu página de Notion
   const DEFAULTS = {
     incomeDemian: 56000,
@@ -636,6 +758,7 @@
     social: 11000,
     // Cuidado personal (Limpieza) en tu página
     personalCare: 1000,
+    investPct: 30,
     pctDemian: 75,
     pctAna: 25,
     weeklyTarget: 6000,
@@ -668,42 +791,140 @@
     barEl.querySelector("div").style.width = p + "%";
   }
 
-  // ---- Persistencia (localStorage) ----
-  const STORAGE_KEY = "budgetDashboard.v1";
+  // ---- Persistencia por mes (localStorage) ----
+  const STORAGE_KEY = "budgetDashboard.v2"; // formato multi-mes
+  const LEGACY_KEY  = "budgetDashboard.v1"; // formato anterior (un solo mes)
   const INPUT_IDS = [
     "incomeDemian","incomeAna","rent","services","groceries",
     "netflix","disney","ants","social","personalCare",
-    "pctDemian","pctAna","emergencyGoal","emergencyCurrent",
+    "investPct","pctDemian","pctAna","emergencyGoal","emergencyCurrent",
     "emergencyDemian","emergencyAna","w1","w2","w3","w4"
   ];
 
-  function guardar(){
-    try{
-      const data = {};
-      INPUT_IDS.forEach(id => { const el = $(id); if(el) data[id] = el.value; });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }catch(e){ /* almacenamiento no disponible (modo privado, etc.) */ }
+  function mesActualKey(d = new Date()){
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
-  function cargar(){
+  function nombreMes(key){
+    const [y, m] = String(key).split("-").map(Number);
+    const s = new Date(y, (m || 1) - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  let mesActivo = mesActualKey();
+  let store = { activeMonth: mesActivo, months: {} };
+
+  function leerFormulario(){
+    const data = {};
+    INPUT_IDS.forEach(id => { const el = $(id); if(el) data[id] = el.value; });
+    return data;
+  }
+
+  function escribirFormulario(data){
+    INPUT_IDS.forEach(id => {
+      const el = $(id);
+      if(el && data && data[id] !== undefined && data[id] !== null) el.value = data[id];
+    });
+  }
+
+  function valoresPorDefecto(){
+    const data = {};
+    INPUT_IDS.forEach(id => { if(DEFAULTS[id] !== undefined) data[id] = DEFAULTS[id]; });
+    return data;
+  }
+
+  function guardarStore(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); }
+    catch(e){ /* almacenamiento no disponible (modo privado, etc.) */ }
+  }
+
+  // Guarda lo que hay en pantalla dentro del mes activo
+  function guardar(){
+    store.months[mesActivo] = leerFormulario();
+    store.activeMonth = mesActivo;
+    guardarStore();
+  }
+
+  function cargarStore(){
+    // 1) Formato nuevo (multi-mes)
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return false;
-      const data = JSON.parse(raw);
-      let alguno = false;
-      INPUT_IDS.forEach(id => {
-        const el = $(id);
-        if(el && data[id] !== undefined && data[id] !== null){ el.value = data[id]; alguno = true; }
-      });
-      return alguno;
-    }catch(e){ return false; }
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed && parsed.months && typeof parsed.months === "object"){
+          store = { activeMonth: parsed.activeMonth || mesActualKey(), months: parsed.months };
+          return true;
+        }
+      }
+    }catch(e){}
+
+    // 2) Migrar formato anterior (un solo mes) al mes actual, sin perder datos
+    try{
+      const legacy = localStorage.getItem(LEGACY_KEY);
+      if(legacy){
+        const data = JSON.parse(legacy);
+        const key = mesActualKey();
+        store = { activeMonth: key, months: { [key]: data } };
+        guardarStore();
+        return true;
+      }
+    }catch(e){}
+
+    return false;
   }
 
+  function mesesGuardados(){
+    return Object.keys(store.months).sort();
+  }
+
+  function sincronizarUIMes(){
+    const picker = $("monthPicker");
+    if(picker) picker.value = mesActivo;
+    txt("monthLabel", nombreMes(mesActivo));
+    const meses = mesesGuardados();
+    txt("monthHint", meses.length
+      ? `${meses.length} mes(es) guardado(s): ${meses.map(nombreMes).join(" · ")}`
+      : "Aún no hay meses guardados.");
+  }
+
+  // Cambia de mes: guarda el actual y carga (o crea) el destino
+  function irAMes(key){
+    if(!key){ sincronizarUIMes(); return; }
+    if(key === mesActivo){ sincronizarUIMes(); return; }
+
+    guardar(); // conserva el mes que dejamos
+
+    if(store.months[key]){
+      mesActivo = key;
+      escribirFormulario(store.months[key]);
+    } else {
+      // Mes nuevo: copia razonable del mes actual (gastos recurrentes),
+      // pero reinicia el seguimiento semanal.
+      const base = leerFormulario();
+      base.w1 = 0; base.w2 = 0; base.w3 = 0; base.w4 = 0;
+      mesActivo = key;
+      escribirFormulario(base);
+      store.months[key] = leerFormulario();
+    }
+
+    sincronizarUIMes();
+    calcular(); // recalcula y guarda
+  }
+
+  function moverMes(delta){
+    const [y, m] = mesActivo.split("-").map(Number);
+    irAMes(mesActualKey(new Date(y, (m - 1) + delta, 1)));
+  }
+
+  // Borra TODOS los meses guardados y restablece el mes actual
   function borrarGuardado(){
-    const ok = confirm("¿Borrar los datos guardados en este navegador y restablecer los valores por defecto?");
-    if(!ok) return;
-    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
-    restablecer();
+    if(!confirm("¿Borrar TODOS los meses guardados y restablecer los valores por defecto?")) return;
+    try{ localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(LEGACY_KEY); }catch(e){}
+    mesActivo = mesActualKey();
+    store = { activeMonth: mesActivo, months: {} };
+    escribirFormulario(valoresPorDefecto());
+    sincronizarUIMes();
+    calcular();
   }
 
   // ---- Gráfica de dona (SVG puro, sin librerías) ----
@@ -804,6 +1025,15 @@
     $("splitDemian").textContent = dinero(parteD);
     $("splitAna").textContent = dinero(parteA);
 
+    // % mínimo de inversión (configurable) + textos dinámicos
+    const invPct = leerNumero("investPct");
+    const tasaInv = invPct / 100;
+    txt("investPctTitle", invPct);
+    txt("investPctRow", invPct);
+    txt("sumInvestPct", invPct);
+    const chipInv = $("chipInvest");
+    if(chipInv) chipInv.textContent = `Inversión mínima: ${invPct}% del restante`;
+
     // Reparto por apartado (según % de división)
     $("fixedDemian").textContent = dinero(fijosCompartidos * pctD);
     $("fixedAna").textContent    = dinero(fijosCompartidos * pctA);
@@ -839,8 +1069,7 @@
     const eMode = pctFondo >= 100 ? "good" : (pctFondo >= 50 ? "warn" : "bad");
     setProgreso($("emergencyBar"), pctFondo, eMode);
 
-    // Inversión mínima (30%) y disponible para invertir por persona
-    const tasaInv = 0.30;
+    // Inversión mínima y disponible para invertir por persona
     const ingresoDemian = leerNumero("incomeDemian");
     const ingresoAna = leerNumero("incomeAna");
 
@@ -882,6 +1111,23 @@
     $("tblExtraA").textContent = dinero(Math.max(0, dispAna - invA));
     $("tblExtraT").textContent = dinero(Math.max(0, dispDemian - invD) + Math.max(0, dispAna - invA));
 
+    // Resumen final destacado (glanceable)
+    txt("resumenMesTag", nombreMes(mesActivo));
+    txt("sumIncome", dinero(ingresos));
+    txt("sumExpense", dinero(gastos));
+    txt("sumFree", dinero(restante));
+    const sumFreeCard = $("sumFreeCard");
+    if(sumFreeCard){
+      sumFreeCard.classList.remove("good","bad");
+      sumFreeCard.classList.add(restante < 0 ? "bad" : "good");
+    }
+    txt("sumPayD", dinero(parteD));
+    txt("sumPayA", dinero(parteA));
+    txt("sumFreeD", dinero(dispDemian));
+    txt("sumFreeA", dinero(dispAna));
+    txt("sumInvestD", dinero(invD));
+    txt("sumInvestA", dinero(invA));
+
     // Seguimiento semanal
     const objetivoSemana = DEFAULTS.weeklyTarget;
     const totalSem = leerNumero("w1")+leerNumero("w2")+leerNumero("w3")+leerNumero("w4");
@@ -910,26 +1156,7 @@
   }
 
   function restablecer(){
-    ponerNumero("incomeDemian", DEFAULTS.incomeDemian);
-    ponerNumero("incomeAna", DEFAULTS.incomeAna);
-    ponerNumero("rent", DEFAULTS.rent);
-    ponerNumero("services", DEFAULTS.services);
-    ponerNumero("groceries", DEFAULTS.groceries);
-    ponerNumero("netflix", DEFAULTS.netflix);
-    ponerNumero("disney", DEFAULTS.disney);
-    ponerNumero("ants", DEFAULTS.ants);
-    ponerNumero("social", DEFAULTS.social);
-    ponerNumero("personalCare", DEFAULTS.personalCare);
-    ponerNumero("pctDemian", DEFAULTS.pctDemian);
-    ponerNumero("pctAna", DEFAULTS.pctAna);
-    ponerNumero("emergencyGoal", DEFAULTS.emergencyGoal);
-    ponerNumero("emergencyCurrent", DEFAULTS.emergencyCurrent);
-    ponerNumero("emergencyDemian", DEFAULTS.emergencyDemian);
-    ponerNumero("emergencyAna", DEFAULTS.emergencyAna);
-    ponerNumero("w1", DEFAULTS.w1);
-    ponerNumero("w2", DEFAULTS.w2);
-    ponerNumero("w3", DEFAULTS.w3);
-    ponerNumero("w4", DEFAULTS.w4);
+    escribirFormulario(valoresPorDefecto());
     calcular();
   }
 
@@ -961,12 +1188,23 @@
   $("btnZeroWeekly").addEventListener("click", limpiarSemanas);
   $("btnClearSaved").addEventListener("click", borrarGuardado);
 
-  // Cargar datos guardados o, si no hay, usar los valores por defecto
-  if(cargar()){
-    calcular();
+  // Navegación por mes
+  $("monthPicker").addEventListener("change", () => irAMes($("monthPicker").value));
+  $("btnPrevMonth").addEventListener("click", () => moverMes(-1));
+  $("btnNextMonth").addEventListener("click", () => moverMes(1));
+
+  // Cargar datos: multi-mes (o migrar formato anterior); si no hay, valores por defecto
+  if(cargarStore()){
+    mesActivo = store.activeMonth || mesActualKey();
+    if(store.months[mesActivo]) escribirFormulario(store.months[mesActivo]);
+    else escribirFormulario(valoresPorDefecto());
   } else {
-    restablecer();
+    mesActivo = mesActualKey();
+    escribirFormulario(valoresPorDefecto());
+    store.months[mesActivo] = leerFormulario();
   }
+  sincronizarUIMes();
+  calcular();
 </script>
 </body>
 </html>
