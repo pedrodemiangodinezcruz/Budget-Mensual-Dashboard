@@ -311,6 +311,43 @@
     .cmpDelta.up-bad{ color:var(--bad); }
     .cmpDelta.neutral{ color:var(--muted); }
     .cmpSub{ font-size:11px; color:var(--muted); margin-top:6px; line-height:1.35; }
+    /* Toggle correcto pese al display:grid */
+    .cmpGrid[hidden]{ display:none; }
+    .cmpEmpty{
+      padding:14px 16px; border-radius:14px;
+      border:1px dashed var(--border);
+      background: rgba(255,255,255,.03);
+      color:var(--muted); font-size:13px; line-height:1.5;
+    }
+    .cmpEmpty b{ color:var(--text); }
+    .cmpEmpty[hidden]{ display:none; }
+
+    /* Exportar / impresión */
+    .print-only{ display:none; }
+    @media print{
+      .no-print{ display:none !important; }
+      body{ background:#fff !important; color:#111 !important; }
+      header{ padding:0 0 8px; max-width:none; }
+      h1{ color:#111; font-size:18px; }
+      .subtitle{ color:#444; }
+      main{ display:block; max-width:none; padding:0; }
+      .card{ box-shadow:none; }
+      .resumenFinal{ grid-column:auto; border:1px solid #ccc; background:#fff; }
+      .resumenFinal h2{ color:#111; }
+      .bigKpi{ background:#f5f5fa !important; border:1px solid #ddd; }
+      .bigKpi .label{ color:#555; }
+      .bigKpi .value{ color:#111 !important; }
+      .bigKpi.good .value{ color:#0a7f5f !important; }
+      .bigKpi.bad .value{ color:#c0324c !important; }
+      .gastoSplitLabels, .gastoSplitLabels b, .gastoSplit .small{ color:#222 !important; }
+      .stackBar{ border:1px solid #ccc; }
+      .personTable th, .personTable td{ color:#111 !important; border-color:#ddd; }
+      .personTable td.d{ color:#5a3fff !important; }
+      .personTable td.a{ color:#0a7f5f !important; }
+      .tag{ color:#333; border-color:#ccc; background:#fff; }
+      .print-only{ display:block; }
+      .printFooter{ margin-top:12px; color:#555; font-size:12px; }
+    }
   </style>
 </head>
 
@@ -320,14 +357,14 @@
     <h1>💰 Presupuesto Mensual — Demian & Ana Pau</h1>
     <div class="subtitle">Dashboard interactivo (edita los valores y todo se recalcula).</div>
   </div>
-  <div class="chiprow">
+  <div class="chiprow no-print">
     <div class="chip" id="chipSplit">Regla: división 75% / 25%</div>
-    <div class="chip">Meta fondo: 50,000</div>
+    <div class="chip" id="chipFondo">Meta fondo: $50,000</div>
     <div class="chip" id="chipInvest">Inversión mínima: 30% del restante</div>
   </div>
 </header>
 
-<div class="toolbar">
+<div class="toolbar no-print">
   <div class="monthPickerWrap">
     <span class="monthEmoji">📅</span>
     <button id="btnPrevMonth" class="navBtn" title="Mes anterior" aria-label="Mes anterior">◀</button>
@@ -337,10 +374,11 @@
   </div>
   <div class="monthMeta">
     <span class="small" id="monthHint">—</span>
+    <button id="btnExport" class="navBtn" title="Imprimir o guardar como PDF el resumen del mes">🖨️ Exportar resumen</button>
   </div>
 </div>
 
-<div class="alertaWrap">
+<div class="alertaWrap no-print">
   <div id="alertaExceso" class="alerta" hidden>
     ⚠️ Estás gastando más de lo que ingresas. Revisa tus gastos para no excederte.
   </div>
@@ -406,15 +444,17 @@
         </tr>
       </tbody>
     </table>
+    <div class="printFooter print-only" id="printFooter"></div>
   </section>
 
   <!-- COMPARATIVA VS MES ANTERIOR -->
-  <section class="card comparativa">
+  <section class="card comparativa no-print">
     <h2>
       📊 Comparativa vs mes anterior
       <span class="tag" id="cmpNote">—</span>
     </h2>
-    <div class="cmpGrid">
+    <div class="cmpEmpty" id="cmpEmpty" hidden></div>
+    <div class="cmpGrid" id="cmpGrid">
       <div class="cmpTile">
         <div class="label">Ingreso total</div>
         <div class="cmpDelta neutral" id="cmpIncomeDelta">—</div>
@@ -444,7 +484,7 @@
   </section>
 
   <!-- COLUMNA IZQUIERDA -->
-  <section class="card">
+  <section class="card no-print">
     <h2>
       Resumen
       <span class="rightHeader">
@@ -664,7 +704,7 @@
   </section>
 
   <!-- COLUMNA DERECHA -->
-  <aside class="card">
+  <aside class="card no-print">
     <h2>⚖️ División + Seguimiento semanal</h2>
 
     <div class="kpi" style="margin-bottom:10px">
@@ -721,7 +761,7 @@
         <div class="name">Total mínimo</div>
         <div class="muted" id="investTotal">$0</div>
       </div>
-      <div class="note" style="margin-top:10px">
+      <div class="note" style="margin-top:10px" id="investNote">
         “Cada quien es libre de invertir más del 30% si quiere acelerar sus metas — este es solo el mínimo acordado.”
       </div>
     </div>
@@ -963,6 +1003,13 @@
     if(subEl) subEl.textContent = `${nombrePrev}: ${dinero(prev)} → ${nombreCur}: ${dinero(cur)}`;
   }
 
+  // Alterna entre la parrilla comparativa y el mensaje de estado inicial
+  function mostrarComparativa(hayComp){
+    const grid = $("cmpGrid"), empty = $("cmpEmpty");
+    if(grid) grid.hidden = !hayComp;
+    if(empty) empty.hidden = hayComp;
+  }
+
   function valoresPorDefecto(){
     const data = {};
     INPUT_IDS.forEach(id => { if(DEFAULTS[id] !== undefined) data[id] = DEFAULTS[id]; });
@@ -1167,6 +1214,7 @@
     txt("investPctTitle", invPct);
     txt("investPctRow", invPct);
     txt("sumInvestPct", invPct);
+    txt("investNote", `“Cada quien es libre de invertir más del ${invPct}% si quiere acelerar sus metas — este es solo el mínimo acordado.”`);
     const chipInv = $("chipInvest");
     if(chipInv) chipInv.textContent = `Inversión mínima: ${invPct}% del restante`;
 
@@ -1192,6 +1240,9 @@
 
     const pctFondo = meta > 0 ? (actual / meta) * 100 : 0;
     $("emergencyLabel").textContent = `Progreso: ${dinero(actual)} / ${dinero(meta)} (${Math.max(0, pctFondo).toFixed(1)}%)`;
+
+    const chipFondo = $("chipFondo");
+    if(chipFondo) chipFondo.textContent = `Meta fondo: ${dinero(meta)}`;
 
     let eta = "—";
     if(meta > actual && aporteTotal > 0){
@@ -1281,6 +1332,7 @@
     const prevData = store.months[prevKey];
     const cmpNoteEl = $("cmpNote");
     if(prevData){
+      mostrarComparativa(true);
       const prev = totalesDe(prevData);
       const nActual = nombreMes(mesActivo).split(" ")[0];
       const nPrev   = nombreMes(prevKey).split(" ")[0];
@@ -1291,10 +1343,22 @@
       setComparacion("cmpFunDelta",     "cmpFunSub",     prev.diversion, totActual.diversion, false, nPrev, nActual);
       setComparacion("cmpGrocDelta",    "cmpGrocSub",    prev.despensa,  totActual.despensa,  false, nPrev, nActual);
     } else {
-      if(cmpNoteEl) cmpNoteEl.textContent = `Sin ${nombreMes(prevKey)} guardado`;
-      ["cmpIncome","cmpExpense","cmpFree","cmpFun","cmpGroc"].forEach(base => {
-        setComparacion(base + "Delta", base + "Sub", null, 0, true);
-      });
+      mostrarComparativa(false);
+      // El mes actual cuenta aunque aún no se haya persistido en el store
+      const guardados = new Set(mesesGuardados());
+      guardados.add(mesActivo);
+      const emptyEl = $("cmpEmpty");
+      if(guardados.size <= 1){
+        if(cmpNoteEl) cmpNoteEl.textContent = "Aún no disponible";
+        if(emptyEl) emptyEl.innerHTML =
+          `📌 Estás en tu <b>primer mes registrado</b> (${nombreMes(mesActivo)}). ` +
+          `Guarda al menos <b>dos meses</b> para activar las comparativas: crea ${nombreMes(prevKey)} con el botón <b>◀</b> o el selector de arriba y vuelve a este mes.`;
+      } else {
+        if(cmpNoteEl) cmpNoteEl.textContent = "Falta el mes anterior";
+        if(emptyEl) emptyEl.innerHTML =
+          `Todavía no hay datos de <b>${nombreMes(prevKey)}</b> para comparar contra <b>${nombreMes(mesActivo)}</b>. ` +
+          `Ve a ${nombreMes(prevKey)} (con <b>◀</b> o el selector) para registrarlo y la comparación aparecerá automáticamente.`;
+      }
     }
 
     // Seguimiento semanal
@@ -1344,6 +1408,16 @@
     calcular();
   }
 
+  // Prepara el pie de página e imprime (o guarda como PDF) el resumen del mes
+  function exportarResumen(){
+    const foot = $("printFooter");
+    if(foot){
+      const hoy = new Date().toLocaleDateString("es-MX", { day:"2-digit", month:"long", year:"numeric" });
+      foot.textContent = `Resumen de ${nombreMes(mesActivo)} · Generado el ${hoy}`;
+    }
+    window.print();
+  }
+
   document.querySelectorAll('input[type="number"]').forEach(i => {
     if(!i.hasAttribute("min")) i.setAttribute("min", "0");
     i.addEventListener("input", () => {
@@ -1360,6 +1434,7 @@
   $("monthPicker").addEventListener("change", () => irAMes($("monthPicker").value));
   $("btnPrevMonth").addEventListener("click", () => moverMes(-1));
   $("btnNextMonth").addEventListener("click", () => moverMes(1));
+  $("btnExport").addEventListener("click", exportarResumen);
 
   // Cargar datos: multi-mes (o migrar formato anterior); si no hay, valores por defecto
   if(cargarStore()){
