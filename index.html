@@ -282,6 +282,35 @@
     .personTable td.strong{ font-weight:700; }
     .personTable td.d{ color:var(--accent); }
     .personTable td.a{ color:var(--good); }
+
+    /* Fijos vs variables (dentro del resumen) */
+    .gastoSplit{ margin-top:14px; }
+    .gastoSplitLabels{ display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:13px; margin-bottom:8px; }
+    .gastoSplitLabels b{ color:var(--text); }
+    .dot{ width:9px; height:9px; border-radius:3px; display:inline-block; vertical-align:middle; margin-right:5px; }
+    .dotFixed{ background: var(--info); }
+    .dotVar{ background: var(--warn); }
+    .stackBar{
+      display:flex; height:14px; width:100%;
+      border-radius:999px; overflow:hidden;
+      border:1px solid var(--border); background: rgba(255,255,255,.04);
+    }
+    .stackBar > div{ height:100%; transition: width .4s ease; }
+    .stackBar .fixedSeg{ background: var(--info); }
+    .stackBar .varSeg{ background: var(--warn); }
+
+    /* Comparativa vs mes anterior */
+    .comparativa{ grid-column: 1 / -1; }
+    .cmpGrid{ display:grid; grid-template-columns: repeat(5, 1fr); gap:10px; }
+    @media (max-width: 860px){ .cmpGrid{ grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 520px){ .cmpGrid{ grid-template-columns: 1fr; } }
+    .cmpTile{ background: rgba(0,0,0,.20); border:1px solid var(--border); border-radius:14px; padding:12px; }
+    .cmpTile .label{ font-size:12px; color:var(--muted); }
+    .cmpDelta{ font-size:16px; font-weight:800; margin-top:6px; }
+    .cmpDelta.up-good{ color:var(--good); }
+    .cmpDelta.up-bad{ color:var(--bad); }
+    .cmpDelta.neutral{ color:var(--muted); }
+    .cmpSub{ font-size:11px; color:var(--muted); margin-top:6px; line-height:1.35; }
   </style>
 </head>
 
@@ -339,6 +368,20 @@
       </div>
     </div>
 
+    <div class="gastoSplit">
+      <div class="gastoSplitLabels">
+        <span><span class="dot dotFixed"></span> Gastos fijos: <b id="sumFixed">$0</b> (<span id="sumFixedPct">0</span>%)</span>
+        <span><span class="dot dotVar"></span> Gastos variables: <b id="sumVariable">$0</b> (<span id="sumVariablePct">0</span>%)</span>
+      </div>
+      <div class="stackBar">
+        <div class="fixedSeg" id="stackFixed" style="width:0%"></div>
+        <div class="varSeg" id="stackVariable" style="width:0%"></div>
+      </div>
+      <div class="small" style="margin-top:6px">
+        Fijos: renta, servicios y suscripciones · Variables: despensa, diversión, gastos hormiga, salidas y cuidado personal
+      </div>
+    </div>
+
     <table class="personTable">
       <thead>
         <tr>
@@ -363,6 +406,41 @@
         </tr>
       </tbody>
     </table>
+  </section>
+
+  <!-- COMPARATIVA VS MES ANTERIOR -->
+  <section class="card comparativa">
+    <h2>
+      📊 Comparativa vs mes anterior
+      <span class="tag" id="cmpNote">—</span>
+    </h2>
+    <div class="cmpGrid">
+      <div class="cmpTile">
+        <div class="label">Ingreso total</div>
+        <div class="cmpDelta neutral" id="cmpIncomeDelta">—</div>
+        <div class="cmpSub" id="cmpIncomeSub">Sin comparación disponible</div>
+      </div>
+      <div class="cmpTile">
+        <div class="label">Gasto total</div>
+        <div class="cmpDelta neutral" id="cmpExpenseDelta">—</div>
+        <div class="cmpSub" id="cmpExpenseSub">Sin comparación disponible</div>
+      </div>
+      <div class="cmpTile">
+        <div class="label">Queda libre</div>
+        <div class="cmpDelta neutral" id="cmpFreeDelta">—</div>
+        <div class="cmpSub" id="cmpFreeSub">Sin comparación disponible</div>
+      </div>
+      <div class="cmpTile">
+        <div class="label">Diversión</div>
+        <div class="cmpDelta neutral" id="cmpFunDelta">—</div>
+        <div class="cmpSub" id="cmpFunSub">Sin comparación disponible</div>
+      </div>
+      <div class="cmpTile">
+        <div class="label">Despensa</div>
+        <div class="cmpDelta neutral" id="cmpGrocDelta">—</div>
+        <div class="cmpSub" id="cmpGrocSub">Sin comparación disponible</div>
+      </div>
+    </div>
   </section>
 
   <!-- COLUMNA IZQUIERDA -->
@@ -392,9 +470,9 @@
         <div class="hint small">Ingresos − Gastos</div>
       </div>
       <div class="kpi">
-        <div class="label">Objetivo semanal (referencia)</div>
+        <div class="label">Objetivo semanal</div>
         <div class="value" id="kpiWeeklyTarget">$0</div>
-        <div class="hint small">Referencia: 6,000 / semana</div>
+        <div class="hint small">Meta por semana (editable)</div>
       </div>
     </div>
 
@@ -704,7 +782,14 @@
 
     <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
       <h2>📅 Seguimiento semanal (Diversión + Despensa)</h2>
-      <div class="small">Objetivo por semana: <span id="weeklyTargetLabel">$6,000</span></div>
+
+      <div class="row">
+        <div>
+          <div class="name">Objetivo por semana</div>
+          <div class="muted">Editable · meta mensual = ×4</div>
+        </div>
+        <input id="weeklyTarget" type="number" min="0" step="1" value="6000" style="width:120px" />
+      </div>
 
       <div style="height:10px"></div>
 
@@ -797,7 +882,7 @@
   const INPUT_IDS = [
     "incomeDemian","incomeAna","rent","services","groceries",
     "netflix","disney","ants","social","personalCare",
-    "investPct","pctDemian","pctAna","emergencyGoal","emergencyCurrent",
+    "investPct","pctDemian","pctAna","weeklyTarget","emergencyGoal","emergencyCurrent",
     "emergencyDemian","emergencyAna","w1","w2","w3","w4"
   ];
 
@@ -823,8 +908,59 @@
   function escribirFormulario(data){
     INPUT_IDS.forEach(id => {
       const el = $(id);
-      if(el && data && data[id] !== undefined && data[id] !== null) el.value = data[id];
+      if(!el) return;
+      // Si el mes guardado no trae un campo (p. ej. añadido después),
+      // usamos su valor por defecto para no arrastrar el del mes anterior.
+      const v = (data && data[id] !== undefined && data[id] !== null) ? data[id] : DEFAULTS[id];
+      if(v !== undefined && v !== null) el.value = v;
     });
+  }
+
+  // Totales derivados a partir de un objeto de datos (mes guardado o formulario)
+  function totalesDe(data){
+    const g = id => Math.max(0, Number((data && data[id]) || 0));
+    const suscripciones = g("netflix") + g("disney");
+    const diversion = g("ants") + g("social");
+    const despensa = g("groceries");
+    const personal = g("personalCare");
+    const ingresos = g("incomeDemian") + g("incomeAna");
+    const fijos = g("rent") + g("services") + suscripciones;        // casi no cambian
+    const variables = despensa + diversion + personal;              // ajustables
+    const gastos = fijos + variables;
+    return { ingresos, gastos, restante: ingresos - gastos, fijos, variables, diversion, despensa };
+  }
+
+  function mesAnteriorKey(key){
+    const [y, m] = String(key).split("-").map(Number);
+    return mesActualKey(new Date(y, (m - 1) - 1, 1));
+  }
+
+  function fmtDelta(diff){
+    const signo = diff > 0 ? "+" : (diff < 0 ? "−" : "");
+    return `${signo}${dinero(Math.abs(diff))}`;
+  }
+
+  // Pinta una celda comparativa (flecha + delta + %) y su subtítulo
+  function setComparacion(idDelta, idSub, prev, cur, subeEsBueno, nombrePrev, nombreCur){
+    const deltaEl = $(idDelta);
+    const subEl = $(idSub);
+    if(!deltaEl) return;
+
+    if(prev === null || prev === undefined){
+      deltaEl.className = "cmpDelta neutral";
+      deltaEl.textContent = "—";
+      if(subEl) subEl.textContent = "Sin comparación disponible";
+      return;
+    }
+
+    const diff = cur - prev;
+    const pct = prev !== 0 ? (diff / Math.abs(prev)) * 100 : (cur !== 0 ? 100 : 0);
+    const flecha = diff > 0 ? "▲" : (diff < 0 ? "▼" : "▬");
+    const clase = diff === 0 ? "neutral" : ((diff > 0) === subeEsBueno ? "up-good" : "up-bad");
+
+    deltaEl.className = "cmpDelta " + clase;
+    deltaEl.textContent = `${flecha} ${fmtDelta(diff)} (${Math.abs(pct).toFixed(0)}%)`;
+    if(subEl) subEl.textContent = `${nombrePrev}: ${dinero(prev)} → ${nombreCur}: ${dinero(cur)}`;
   }
 
   function valoresPorDefecto(){
@@ -984,6 +1120,7 @@
     const suscripciones = leerNumero("netflix") + leerNumero("disney");
     const diversion = leerNumero("ants") + leerNumero("social");
     const personal = totalCuidadoPersonal();
+    const objetivoSemana = leerNumero("weeklyTarget");
 
     const gastos = fijosCompartidos + suscripciones + diversion + personal;
     const restante = ingresos - gastos;
@@ -991,8 +1128,7 @@
     $("kpiIncome").textContent = dinero(ingresos);
     $("kpiExpenses").textContent = dinero(gastos);
     $("kpiRemaining").textContent = dinero(restante);
-    $("kpiWeeklyTarget").textContent = dinero(DEFAULTS.weeklyTarget);
-    $("weeklyTargetLabel").textContent = dinero(DEFAULTS.weeklyTarget);
+    $("kpiWeeklyTarget").textContent = dinero(objetivoSemana);
 
     // Alerta visual + color del restante si hay sobregasto
     $("kpiRemaining").style.color = restante < 0 ? "var(--bad)" : "var(--text)";
@@ -1128,8 +1264,40 @@
     txt("sumInvestD", dinero(invD));
     txt("sumInvestA", dinero(invA));
 
+    // Desglose fijos vs variables (en el resumen)
+    const totActual = totalesDe(leerFormulario());
+    const pctFijos = totActual.gastos > 0 ? (totActual.fijos / totActual.gastos) * 100 : 0;
+    const pctVar   = totActual.gastos > 0 ? (totActual.variables / totActual.gastos) * 100 : 0;
+    txt("sumFixed", dinero(totActual.fijos));
+    txt("sumVariable", dinero(totActual.variables));
+    txt("sumFixedPct", pctFijos.toFixed(0));
+    txt("sumVariablePct", pctVar.toFixed(0));
+    const stF = $("stackFixed"), stV = $("stackVariable");
+    if(stF) stF.style.width = pctFijos + "%";
+    if(stV) stV.style.width = pctVar + "%";
+
+    // Comparativa vs mes anterior (si existe guardado)
+    const prevKey  = mesAnteriorKey(mesActivo);
+    const prevData = store.months[prevKey];
+    const cmpNoteEl = $("cmpNote");
+    if(prevData){
+      const prev = totalesDe(prevData);
+      const nActual = nombreMes(mesActivo).split(" ")[0];
+      const nPrev   = nombreMes(prevKey).split(" ")[0];
+      if(cmpNoteEl) cmpNoteEl.textContent = `${nombreMes(mesActivo)} vs ${nombreMes(prevKey)}`;
+      setComparacion("cmpIncomeDelta",  "cmpIncomeSub",  prev.ingresos,  totActual.ingresos,  true,  nPrev, nActual);
+      setComparacion("cmpExpenseDelta", "cmpExpenseSub", prev.gastos,    totActual.gastos,    false, nPrev, nActual);
+      setComparacion("cmpFreeDelta",    "cmpFreeSub",    prev.restante,  totActual.restante,  true,  nPrev, nActual);
+      setComparacion("cmpFunDelta",     "cmpFunSub",     prev.diversion, totActual.diversion, false, nPrev, nActual);
+      setComparacion("cmpGrocDelta",    "cmpGrocSub",    prev.despensa,  totActual.despensa,  false, nPrev, nActual);
+    } else {
+      if(cmpNoteEl) cmpNoteEl.textContent = `Sin ${nombreMes(prevKey)} guardado`;
+      ["cmpIncome","cmpExpense","cmpFree","cmpFun","cmpGroc"].forEach(base => {
+        setComparacion(base + "Delta", base + "Sub", null, 0, true);
+      });
+    }
+
     // Seguimiento semanal
-    const objetivoSemana = DEFAULTS.weeklyTarget;
     const totalSem = leerNumero("w1")+leerNumero("w2")+leerNumero("w3")+leerNumero("w4");
     const objetivoMes = objetivoSemana * 4;
     const pctSem = objetivoMes > 0 ? (totalSem / objetivoMes) * 100 : 0;
