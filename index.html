@@ -155,6 +155,21 @@
       background: rgba(255,255,255,.04);
     }
     .rightHeader{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+    /* Reparto por persona dentro de cada apartado */
+    .splitLine{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:8px;
+      padding-top:8px;
+      border-top:1px solid rgba(255,255,255,.08);
+      font-size:12px;
+    }
+    .splitLine .who{color:var(--muted)}
+    .splitLine .amt{color:var(--text); font-weight:600}
+    .splitLine .amt.d{color:var(--accent)}
+    .splitLine .amt.a{color:var(--good)}
   </style>
 </head>
 
@@ -206,7 +221,7 @@
     </div>
 
     <div class="note">
-      Tip: Los valores vienen precargados con tus números (MXN). Cambia lo que quieras y se actualiza la división proporcional + inversión mínima.
+      Tip: Los valores vienen precargados con tus números (MXN). Cambia lo que quieras y se actualiza la división proporcional + inversión mínima. En cada apartado verás cuánto paga cada quien según el % de división.
     </div>
 
     <div style="height:12px"></div>
@@ -247,6 +262,15 @@
           <div class="name">Despensa</div>
           <input id="groceries" type="number" step="1" value="9000" />
         </div>
+
+        <div class="splitLine">
+          <span class="who">Paga Demian</span>
+          <span class="amt d" id="fixedDemian">$0</span>
+        </div>
+        <div class="splitLine">
+          <span class="who">Paga Ana Pau</span>
+          <span class="amt a" id="fixedAna">$0</span>
+        </div>
       </div>
     </div>
 
@@ -262,6 +286,15 @@
         <div class="row">
           <div class="name">Disney+</div>
           <input id="disney" type="number" step="1" value="339" />
+        </div>
+
+        <div class="splitLine">
+          <span class="who">Paga Demian</span>
+          <span class="amt d" id="subsDemian">$0</span>
+        </div>
+        <div class="splitLine">
+          <span class="who">Paga Ana Pau</span>
+          <span class="amt a" id="subsAna">$0</span>
         </div>
       </div>
 
@@ -280,6 +313,15 @@
             <div class="muted">Variable</div>
           </div>
           <input id="social" type="number" step="1" value="11000" />
+        </div>
+
+        <div class="splitLine">
+          <span class="who">Paga Demian</span>
+          <span class="amt d" id="funDemian">$0</span>
+        </div>
+        <div class="splitLine">
+          <span class="who">Paga Ana Pau</span>
+          <span class="amt a" id="funAna">$0</span>
         </div>
       </div>
     </div>
@@ -509,6 +551,16 @@
     $("splitTotal").textContent = dinero(gastos);
     $("splitDemian").textContent = dinero(parteD);
     $("splitAna").textContent = dinero(parteA);
+
+    // Reparto por apartado (según % de división)
+    $("fixedDemian").textContent = dinero(fijosCompartidos * pctD);
+    $("fixedAna").textContent    = dinero(fijosCompartidos * pctA);
+
+    $("subsDemian").textContent  = dinero(suscripciones * pctD);
+    $("subsAna").textContent     = dinero(suscripciones * pctA);
+
+    $("funDemian").textContent   = dinero(diversion * pctD);
+    $("funAna").textContent      = dinero(diversion * pctA);
 
     // Fondo emergencia
     const meta = leerNumero("emergencyGoal");
