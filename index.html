@@ -15,6 +15,7 @@
       --good:#31d0aa;
       --warn:#ffcc66;
       --bad:#ff5c7a;
+      --info:#5cc2ff;
       --border: rgba(255,255,255,.08);
     }
     *{box-sizing:border-box}
@@ -200,6 +201,35 @@
     }
     .investTable td.d{color:var(--accent)}
     .investTable td.a{color:var(--good)}
+
+    /* Alerta de sobregasto */
+    .alertaWrap{ max-width:1100px; margin:0 auto; padding:0 20px; }
+    .alerta{
+      margin-top:8px;
+      padding:12px 16px;
+      border-radius:12px;
+      border:1px solid rgba(255,92,122,.5);
+      background: rgba(255,92,122,.14);
+      color:#ffd0d9;
+      font-size:13px;
+      font-weight:600;
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+    /* Respeta el atributo hidden pese al display:flex de arriba */
+    .alerta[hidden]{ display:none; }
+
+    /* Gráfica de dona (SVG puro) */
+    .donutWrap{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    .donut{ width:130px; height:130px; flex:0 0 auto; }
+    .donut circle{ transition: stroke-dasharray .45s ease, stroke-dashoffset .45s ease; }
+    .donutCenter{ fill: var(--text); font-size:5px; font-weight:700; }
+    .donutLegend{ display:flex; flex-direction:column; gap:8px; flex:1 1 150px; min-width:150px; }
+    .legendItem{ display:flex; align-items:center; gap:8px; font-size:12px; }
+    .legendDot{ width:10px; height:10px; border-radius:3px; flex:0 0 auto; }
+    .legendLabel{ color:var(--text); flex:1 1 auto; }
+    .legendVal{ color:var(--muted); white-space:nowrap; }
   </style>
 </head>
 
@@ -210,11 +240,17 @@
     <div class="subtitle">Dashboard interactivo (edita los valores y todo se recalcula).</div>
   </div>
   <div class="chiprow">
-    <div class="chip">Regla: división 75% / 25%</div>
+    <div class="chip" id="chipSplit">Regla: división 75% / 25%</div>
     <div class="chip">Meta fondo: 50,000</div>
     <div class="chip">Inversión mínima: 30% del restante</div>
   </div>
 </header>
+
+<div class="alertaWrap">
+  <div id="alertaExceso" class="alerta" hidden>
+    ⚠️ Estás gastando más de lo que ingresas. Revisa tus gastos para no excederte.
+  </div>
+</div>
 
 <main>
   <!-- COLUMNA IZQUIERDA -->
@@ -358,6 +394,42 @@
 
     <div style="height:10px"></div>
 
+    <div class="twoCols">
+      <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
+        <h2>🧴 Cuidado personal</h2>
+        <div class="row">
+          <div>
+            <div class="name">Limpieza y cuidado</div>
+            <div class="muted">Higiene, productos, etc.</div>
+          </div>
+          <input id="personalCare" type="number" min="0" step="1" value="1000" />
+        </div>
+
+        <div class="splitLine">
+          <span class="who">Paga Demian</span>
+          <span class="amt d" id="personalDemian">$0</span>
+        </div>
+        <div class="splitLine">
+          <span class="who">Paga Ana Pau</span>
+          <span class="amt a" id="personalAna">$0</span>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
+        <h2>🍩 Distribución de gastos</h2>
+        <div class="donutWrap">
+          <svg viewBox="0 0 42 42" class="donut" role="img" aria-label="Distribución de gastos">
+            <circle class="donut-ring" cx="21" cy="21" r="15.915" fill="transparent" stroke="rgba(255,255,255,.08)" stroke-width="4"></circle>
+            <g id="donutSegments"></g>
+            <text id="donutCenter" class="donutCenter" x="21" y="21" text-anchor="middle" dominant-baseline="central">$0</text>
+          </svg>
+          <div class="donutLegend" id="donutLegend"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
     <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
       <h2>🆘 Fondo de emergencia</h2>
 
@@ -397,6 +469,7 @@
       <button id="btnReset">Restablecer valores</button>
       <button id="btnExample" title="Opcional: llena las semanas con un ejemplo">Llenar ejemplo semanal</button>
       <button class="danger" id="btnZeroWeekly" title="Borra los gastos semanales">Limpiar semanas</button>
+      <button class="danger" id="btnClearSaved" title="Borra los datos guardados en este navegador">🗑️ Borrar guardado</button>
     </div>
   </section>
 
@@ -573,9 +646,9 @@
     w1: 0, w2: 0, w3: 0, w4: 0
   };
 
-  function totalCuidadoPersonal(){ return DEFAULTS.personalCare; }
+  function totalCuidadoPersonal(){ return leerNumero("personalCare"); }
 
-  function leerNumero(id){ return Number($(id).value || 0); }
+  function leerNumero(id){ return Math.max(0, Number($(id).value || 0)); }
   function ponerNumero(id, v){ $(id).value = Number(v); }
 
   function validarPorcentajes(){
@@ -593,6 +666,92 @@
     barEl.classList.remove("good","warn","bad");
     if(modo) barEl.classList.add(modo);
     barEl.querySelector("div").style.width = p + "%";
+  }
+
+  // ---- Persistencia (localStorage) ----
+  const STORAGE_KEY = "budgetDashboard.v1";
+  const INPUT_IDS = [
+    "incomeDemian","incomeAna","rent","services","groceries",
+    "netflix","disney","ants","social","personalCare",
+    "pctDemian","pctAna","emergencyGoal","emergencyCurrent",
+    "emergencyDemian","emergencyAna","w1","w2","w3","w4"
+  ];
+
+  function guardar(){
+    try{
+      const data = {};
+      INPUT_IDS.forEach(id => { const el = $(id); if(el) data[id] = el.value; });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }catch(e){ /* almacenamiento no disponible (modo privado, etc.) */ }
+  }
+
+  function cargar(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return false;
+      const data = JSON.parse(raw);
+      let alguno = false;
+      INPUT_IDS.forEach(id => {
+        const el = $(id);
+        if(el && data[id] !== undefined && data[id] !== null){ el.value = data[id]; alguno = true; }
+      });
+      return alguno;
+    }catch(e){ return false; }
+  }
+
+  function borrarGuardado(){
+    const ok = confirm("¿Borrar los datos guardados en este navegador y restablecer los valores por defecto?");
+    if(!ok) return;
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    restablecer();
+  }
+
+  // ---- Gráfica de dona (SVG puro, sin librerías) ----
+  function renderDonut(cats){
+    const NS = "http://www.w3.org/2000/svg";
+    const total = cats.reduce((s,c) => s + Math.max(0, c.value || 0), 0);
+    const segEl = $("donutSegments");
+    const legEl = $("donutLegend");
+
+    if(!segEl || !legEl) return;
+
+    while(segEl.firstChild) segEl.removeChild(segEl.firstChild);
+    legEl.innerHTML = "";
+
+    let acumulado = 0; // en escala 0-100 (circunferencia ≈ 100 con r=15.915)
+    cats.forEach(c => {
+      const val = Math.max(0, c.value || 0);
+      const pct = total > 0 ? (val / total) * 100 : 0;
+
+      if(pct > 0){
+        let offset = 25 - acumulado; // 25 => empieza arriba (12 en punto)
+        while(offset < 0) offset += 100;
+
+        const circle = document.createElementNS(NS, "circle");
+        circle.setAttribute("cx", "21");
+        circle.setAttribute("cy", "21");
+        circle.setAttribute("r", "15.915");
+        circle.setAttribute("fill", "transparent");
+        circle.setAttribute("stroke", c.color);
+        circle.setAttribute("stroke-width", "4");
+        circle.setAttribute("stroke-dasharray", `${pct.toFixed(3)} ${(100 - pct).toFixed(3)}`);
+        circle.setAttribute("stroke-dashoffset", offset.toFixed(3));
+        segEl.appendChild(circle);
+
+        acumulado += pct;
+      }
+
+      const item = document.createElement("div");
+      item.className = "legendItem";
+      item.innerHTML =
+        `<span class="legendDot" style="background:${c.color}"></span>` +
+        `<span class="legendLabel">${c.label}</span>` +
+        `<span class="legendVal">${dinero(val)} · ${pct.toFixed(0)}%</span>`;
+      legEl.appendChild(item);
+    });
+
+    const centerEl = $("donutCenter");
+    if(centerEl) centerEl.textContent = dinero(total);
   }
 
   function calcular(){
@@ -613,6 +772,15 @@
     $("kpiRemaining").textContent = dinero(restante);
     $("kpiWeeklyTarget").textContent = dinero(DEFAULTS.weeklyTarget);
     $("weeklyTargetLabel").textContent = dinero(DEFAULTS.weeklyTarget);
+
+    // Alerta visual + color del restante si hay sobregasto
+    $("kpiRemaining").style.color = restante < 0 ? "var(--bad)" : "var(--text)";
+    const alertaEl = $("alertaExceso");
+    if(alertaEl) alertaEl.hidden = restante >= 0;
+
+    // Chip del encabezado con los % actuales
+    const chipEl = $("chipSplit");
+    if(chipEl) chipEl.textContent = `Regla: división ${leerNumero("pctDemian")}% / ${leerNumero("pctAna")}%`;
 
     // Tasa de ahorro
     const tasaAhorro = ingresos > 0 ? (restante / ingresos) : 0;
@@ -645,6 +813,9 @@
 
     $("funDemian").textContent   = dinero(diversion * pctD);
     $("funAna").textContent      = dinero(diversion * pctA);
+
+    $("personalDemian").textContent = dinero(personal * pctD);
+    $("personalAna").textContent    = dinero(personal * pctA);
 
     // Fondo emergencia
     const meta = leerNumero("emergencyGoal");
@@ -725,6 +896,17 @@
     if(pctSem > 110) wMode = "bad";
     else if(pctSem > 100) wMode = "warn";
     setProgreso($("weeklyBar"), pctSem, wMode);
+
+    // Gráfica de dona (distribución de gastos)
+    renderDonut([
+      {label:"Gastos fijos",     color:"#7c5cff", value: fijosCompartidos},
+      {label:"Suscripciones",    color:"#31d0aa", value: suscripciones},
+      {label:"Diversión",        color:"#ffcc66", value: diversion},
+      {label:"Cuidado personal", color:"#5cc2ff", value: personal}
+    ]);
+
+    // Guardar automáticamente en el navegador
+    guardar();
   }
 
   function restablecer(){
@@ -737,6 +919,7 @@
     ponerNumero("disney", DEFAULTS.disney);
     ponerNumero("ants", DEFAULTS.ants);
     ponerNumero("social", DEFAULTS.social);
+    ponerNumero("personalCare", DEFAULTS.personalCare);
     ponerNumero("pctDemian", DEFAULTS.pctDemian);
     ponerNumero("pctAna", DEFAULTS.pctAna);
     ponerNumero("emergencyGoal", DEFAULTS.emergencyGoal);
@@ -766,12 +949,24 @@
     calcular();
   }
 
-  document.querySelectorAll("input").forEach(i => i.addEventListener("input", calcular));
+  document.querySelectorAll('input[type="number"]').forEach(i => {
+    if(!i.hasAttribute("min")) i.setAttribute("min", "0");
+    i.addEventListener("input", () => {
+      if(i.value !== "" && Number(i.value) < 0) i.value = 0; // sin negativos
+      calcular();
+    });
+  });
   $("btnReset").addEventListener("click", restablecer);
   $("btnExample").addEventListener("click", ejemploSemanal);
   $("btnZeroWeekly").addEventListener("click", limpiarSemanas);
+  $("btnClearSaved").addEventListener("click", borrarGuardado);
 
-  restablecer();
+  // Cargar datos guardados o, si no hay, usar los valores por defecto
+  if(cargar()){
+    calcular();
+  } else {
+    restablecer();
+  }
 </script>
 </body>
 </html>
