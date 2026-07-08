@@ -196,3 +196,16 @@ vez, quien guarde después verá un aviso amarillo con dos opciones: **Recargar 
 nube** (descarta lo tuyo y trae lo de tu pareja) o **Guardar de todos modos** (tus
 cambios sobrescriben). Así nadie pierde datos "en silencio".
 
+### Filas duplicadas y datos borrados
+
+- **Duplicados por mes:** si por error quedan dos filas con el mismo `mes`, el script
+  usa siempre la de **`updatedAt` más reciente** y, al guardar ese mes, **borra las
+  filas sobrantes** automáticamente. El dashboard te avisa: *"Sincronizado ⚠ — N mes(es)
+  con filas duplicadas (usé la más reciente)"*.
+- **Celdas vacías / borradas a mano:** si alguien borra valores en la hoja, el dashboard
+  **rellena con valores por defecto** por campo (nunca muestra NaN ni se rompe) y avisa:
+  *"N con datos recuperados por defecto"*.
+- **Columnas nuevas (presupuesto planeado):** los campos `planRent`, `planServices`,
+  `planGroceries`, `planSubs`, `planFun`, `planPersonal` se agregan como **columnas
+  nuevas automáticamente** la primera vez que guardas; no tienes que crearlas.
+

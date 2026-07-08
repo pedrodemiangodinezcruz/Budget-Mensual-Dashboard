@@ -469,6 +469,25 @@
     /* Insights dentro del reporte (impresión) */
     .rpt-ins-title{ font-weight:800; margin-bottom:6px; }
     .rpt-ins-row{ margin:4px 0; }
+
+    /* Presupuesto planeado vs real */
+    .bgtTable{ width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
+    .bgtTable th, .bgtTable td{ padding:7px 6px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08); }
+    .bgtTable th:first-child, .bgtTable td:first-child{ text-align:left; color:var(--text); }
+    .bgtTable thead th{ color:var(--muted); font-weight:600; font-size:11px; }
+    .bgtTable input[type="number"]{ width:96px; max-width:34vw; padding:6px 8px; text-align:right; }
+    .bgtTable tr.bgtTotal td{ font-weight:800; color:var(--text); border-top:1px solid rgba(255,255,255,.16); }
+    .bgtDiff{ font-weight:700; }
+    .bgtBadge{ font-size:10.5px; padding:2px 7px; border-radius:999px; border:1px solid var(--border); color:var(--muted); white-space:nowrap; }
+    .bgtBadge.good{ color:var(--good); border-color: rgba(49,208,170,.4); background: rgba(49,208,170,.08); }
+    .bgtBadge.warn{ color:var(--warn); border-color: rgba(255,204,102,.4); background: rgba(255,204,102,.08); }
+    .bgtBadge.bad{ color:var(--bad); border-color: rgba(255,92,122,.45); background: rgba(255,92,122,.10); }
+
+    /* Presupuesto en el reporte (impresión) */
+    .rpt-badge{ font-size:10px; padding:1px 6px; border-radius:999px; border:1px solid var(--rp-line); }
+    .rpt-badge.good{ color:var(--rp-green); }
+    .rpt-badge.warn{ color:var(--rp-amber); }
+    .rpt-badge.bad{ color:var(--rp-red); }
   </style>
 </head>
 
@@ -796,6 +815,73 @@
     <div style="height:10px"></div>
 
     <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
+      <h2>🎯 Presupuesto planeado vs real
+        <span class="tag" id="bgtHeadTag">—</span>
+      </h2>
+      <div class="small">Captura lo que <b>planeas</b> gastar por categoría; se compara con el gasto <b>real</b> del mes.</div>
+      <div style="height:8px"></div>
+      <table class="bgtTable">
+        <thead>
+          <tr><th>Categoría</th><th>Planeado</th><th>Real</th><th>Dif.</th><th>Estado</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Renta</td>
+            <td><input id="planRent" type="number" min="0" step="1" value="22000" /></td>
+            <td id="bgtRealRent">$0</td>
+            <td class="bgtDiff" id="bgtDiffRent">$0</td>
+            <td id="bgtStatusRent"><span class="bgtBadge">—</span></td>
+          </tr>
+          <tr>
+            <td>Servicios</td>
+            <td><input id="planServices" type="number" min="0" step="1" value="1500" /></td>
+            <td id="bgtRealServices">$0</td>
+            <td class="bgtDiff" id="bgtDiffServices">$0</td>
+            <td id="bgtStatusServices"><span class="bgtBadge">—</span></td>
+          </tr>
+          <tr>
+            <td>Despensa</td>
+            <td><input id="planGroceries" type="number" min="0" step="1" value="9000" /></td>
+            <td id="bgtRealGroceries">$0</td>
+            <td class="bgtDiff" id="bgtDiffGroceries">$0</td>
+            <td id="bgtStatusGroceries"><span class="bgtBadge">—</span></td>
+          </tr>
+          <tr>
+            <td>Suscripciones</td>
+            <td><input id="planSubs" type="number" min="0" step="1" value="689" /></td>
+            <td id="bgtRealSubs">$0</td>
+            <td class="bgtDiff" id="bgtDiffSubs">$0</td>
+            <td id="bgtStatusSubs"><span class="bgtBadge">—</span></td>
+          </tr>
+          <tr>
+            <td>Diversión</td>
+            <td><input id="planFun" type="number" min="0" step="1" value="15000" /></td>
+            <td id="bgtRealFun">$0</td>
+            <td class="bgtDiff" id="bgtDiffFun">$0</td>
+            <td id="bgtStatusFun"><span class="bgtBadge">—</span></td>
+          </tr>
+          <tr>
+            <td>Cuidado personal</td>
+            <td><input id="planPersonal" type="number" min="0" step="1" value="1000" /></td>
+            <td id="bgtRealPersonal">$0</td>
+            <td class="bgtDiff" id="bgtDiffPersonal">$0</td>
+            <td id="bgtStatusPersonal"><span class="bgtBadge">—</span></td>
+          </tr>
+          <tr class="bgtTotal">
+            <td>Total</td>
+            <td id="bgtPlanTotal">$0</td>
+            <td id="bgtRealTotal">$0</td>
+            <td class="bgtDiff" id="bgtDiffTotal">$0</td>
+            <td id="bgtStatusTotal"><span class="bgtBadge">—</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note" id="bgtResumen" style="margin-top:10px">—</div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="card" style="padding:12px; background: rgba(0,0,0,.10)">
       <h2>🆘 Fondo de emergencia</h2>
 
       <div class="row">
@@ -1100,6 +1186,18 @@
     </div>
   </div>
 
+  <div class="rpt-cols" style="grid-template-columns:1fr">
+    <div class="rpt-card">
+      <h3>Presupuesto planeado vs real</h3>
+      <table class="rpt-table">
+        <thead>
+          <tr><th>Categoría</th><th>Planeado</th><th>Real</th><th>Dif.</th><th>Estado</th></tr>
+        </thead>
+        <tbody id="rptBudgetBody"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="rpt-insight" id="rptInsight">—</div>
 
   <div class="rpt-foot">Generado por el Dashboard de Presupuesto Mensual · <span id="rptFootDate"></span></div>
@@ -1137,7 +1235,14 @@
     emergencyCurrent: 0,
     emergencyDemian: 3000,
     emergencyAna: 1000,
-    w1: 0, w2: 0, w3: 0, w4: 0
+    w1: 0, w2: 0, w3: 0, w4: 0,
+    // Presupuesto planeado por categoría (por defecto = gasto real por defecto)
+    planRent: 22000,
+    planServices: 1500,
+    planGroceries: 9000,
+    planSubs: 689,
+    planFun: 15000,
+    planPersonal: 1000
   };
 
   function totalCuidadoPersonal(){ return leerNumero("personalCare"); }
@@ -1169,7 +1274,8 @@
     "incomeDemian","incomeAna","rent","services","groceries",
     "netflix","disney","ants","social","personalCare",
     "investPct","pctDemian","pctAna","weeklyTarget","emergencyGoal","emergencyCurrent",
-    "emergencyDemian","emergencyAna","w1","w2","w3","w4"
+    "emergencyDemian","emergencyAna","w1","w2","w3","w4",
+    "planRent","planServices","planGroceries","planSubs","planFun","planPersonal"
   ];
 
   const MESES_ES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -1211,6 +1317,29 @@
       out[nk] = mapa[k];
     });
     return out;
+  }
+
+  // Campos que son porcentajes (se acotan a 0–100)
+  const PCT_IDS = ["pctDemian","pctAna","investPct"];
+
+  // Valida y normaliza un registro de mes remoto: números seguros (sin NaN),
+  // porcentajes acotados y default por campo si falta o viene corrupto.
+  // Devuelve { data, recuperado } donde recuperado=true si hubo que rescatar algo.
+  function validarNormalizarMes(raw){
+    const out = {};
+    let recuperado = false;
+    if(!raw || typeof raw !== "object"){ raw = {}; recuperado = true; }
+    INPUT_IDS.forEach(id => {
+      const tiene = Object.prototype.hasOwnProperty.call(raw, id) &&
+        raw[id] !== "" && raw[id] !== null && raw[id] !== undefined;
+      let n = tiene ? Number(raw[id]) : Number(DEFAULTS[id] || 0);
+      if(tiene && !isFinite(n)){ n = Number(DEFAULTS[id] || 0); recuperado = true; } // había dato pero inválido
+      if(!isFinite(n)) n = 0;
+      if(n < 0) n = 0;
+      if(PCT_IDS.indexOf(id) >= 0) n = Math.min(100, Math.max(0, n));
+      out[id] = String(n);
+    });
+    return { data: out, recuperado };
   }
 
   let mesActivo = mesActualKey();
@@ -1313,6 +1442,14 @@
     return s;
   }
 
+  // Estado de una categoría según planeado vs real
+  function estadoPresupuesto(plan, real){
+    if(real <= plan) return { cls:"good", label:"En presupuesto" };
+    const over = plan > 0 ? ((real - plan) / plan) * 100 : 100;
+    if(over <= 10) return { cls:"warn", label:"Ajustado" };
+    return { cls:"bad", label:"Excedido" };
+  }
+
   // Lista de insights automáticos, breves y útiles, del mes
   function generarInsights(d){
     const out = [];
@@ -1370,6 +1507,17 @@
         out.push(dg > 0
           ? { icon:"⚠️", tono:"warn", texto:`Gastaste <b>${dinero(dg)} más</b> que ${d.cmp.prevName}. Revisa qué subió.` }
           : { icon:"✅", tono:"good", texto:`Gastaste <b>${dinero(-dg)} menos</b> que ${d.cmp.prevName}. ¡Bien!` });
+      }
+    }
+
+    // 7) Presupuesto planeado vs real
+    if(d.budget){
+      const b = d.budget;
+      if(b.diffTotal < 0){
+        const extra = (b.over && b.over.length) ? ` (más en <b>${b.over[0].label}</b>: +${dinero(b.over[0].over)})` : "";
+        out.push({ icon:"🎯", tono:"warn", texto:`Te pasaste <b>${dinero(-b.diffTotal)}</b> del presupuesto planeado${extra}.` });
+      } else {
+        out.push({ icon:"🎯", tono:"good", texto:`Vas <b>${dinero(b.diffTotal)}</b> por debajo de tu presupuesto planeado. 👏` });
       }
     }
 
@@ -1463,6 +1611,24 @@
       } else {
         cmpBody.innerHTML = `<div class="rpt-cmp-sub">${d.cmpEmptyMsg}</div>`;
       }
+    }
+
+    // Presupuesto planeado vs real (reporte)
+    const bBody = $("rptBudgetBody");
+    if(bBody && d.budget){
+      const filas = d.budget.cats.map(c => {
+        const st = estadoPresupuesto(c.plan, c.real);
+        const signo = c.diff >= 0 ? "+" : "−";
+        return `<tr><td>${c.label}</td><td>${dinero(c.plan)}</td><td>${dinero(c.real)}</td>` +
+          `<td>${signo}${dinero(Math.abs(c.diff))}</td>` +
+          `<td><span class="rpt-badge ${st.cls}">${st.label}</span></td></tr>`;
+      }).join("");
+      const stT = estadoPresupuesto(d.budget.planTotal, d.budget.realTotal);
+      const signoT = d.budget.diffTotal >= 0 ? "+" : "−";
+      bBody.innerHTML = filas +
+        `<tr style="font-weight:800"><td>Total</td><td>${dinero(d.budget.planTotal)}</td>` +
+        `<td>${dinero(d.budget.realTotal)}</td><td>${signoT}${dinero(Math.abs(d.budget.diffTotal))}</td>` +
+        `<td><span class="rpt-badge ${stT.cls}">${stT.label}</span></td></tr>`;
     }
 
     txt("rptInsight", "");
@@ -1628,7 +1794,7 @@
     const res = await fetch(urlConParam(cloud.url, "action=all"), { method:"GET" });
     const data = await res.json();
     if(!data || !data.ok) throw new Error((data && data.error) || "respuesta no válida");
-    return { months: data.months || {}, updatedAt: data.updatedAt || {} };
+    return { months: data.months || {}, updatedAt: data.updatedAt || {}, dupes: data.dupes || {} };
   }
 
   async function cloudPostMonth(month, datos, force){
@@ -1758,8 +1924,18 @@
       if(cloudPending && !conflicto.activo) await cloudFlush(mesActivo);
       setCloudStatus("Sincronizando…", "saving");
       if(modalNubeAbierto()) setModalStatus("Sincronizando…");
-      const { months, updatedAt } = await cloudFetchAll();
-      store.months = Object.assign({}, store.months, normalizarClavesMeses(months));
+      const { months, updatedAt, dupes } = await cloudFetchAll();
+
+      // Validación/normalización de cada registro remoto (evita NaN y datos corruptos)
+      const limpios = {}; let recuperados = 0;
+      Object.keys(months).forEach(k => {
+        const nk = mesKeyNormalizar(k) || String(k);
+        const r = validarNormalizarMes(months[k]);
+        limpios[nk] = r.data;
+        if(r.recuperado) recuperados++;
+      });
+
+      store.months = Object.assign({}, store.months, limpios);
       store.updatedAt = Object.assign({}, store.updatedAt || {}, updatedAt);
       store.activeMonth = mesActivo;
       guardarStore(); // respaldo local
@@ -1768,9 +1944,17 @@
       sincronizarUIMes();
       calcular(); // recalcula (no vuelve a marcar cambios pendientes)
       cloudPending = false;
-      const n = Object.keys(months).length;
-      setCloudStatus("Sincronizado ✓ " + horaCorta(), "ok");
-      if(modalNubeAbierto()) setModalStatus(`Sincronizado ✓ — ${n} mes(es) en la hoja · ${horaCorta()}`, "var(--good)");
+
+      const n = Object.keys(limpios).length;
+      const dupCount = dupes ? Object.keys(dupes).length : 0;
+      const avisos = [];
+      if(dupCount) avisos.push(`${dupCount} mes(es) con filas duplicadas (usé la más reciente)`);
+      if(recuperados) avisos.push(`${recuperados} con datos recuperados por defecto`);
+      setCloudStatus(avisos.length ? "Sincronizado ⚠ (revisa la nube)" : "Sincronizado ✓ " + horaCorta(), avisos.length ? "warn" : "ok");
+      if(modalNubeAbierto()){
+        const extra = avisos.length ? " · " + avisos.join(" · ") : "";
+        setModalStatus(`Sincronizado ✓ — ${n} mes(es)${extra} · ${horaCorta()}`, avisos.length ? "var(--warn)" : "var(--good)");
+      }
     }catch(err){
       setCloudStatus("Sin conexión (modo local)", "error");
       if(modalNubeAbierto()) setModalStatus(explicarErrorNube(err), "var(--bad)");
@@ -2118,6 +2302,51 @@
       {label:"Cuidado personal", color:"#5cc2ff", value: personal}
     ]);
 
+    // ---- Presupuesto planeado vs real ----
+    const bgtCats = [
+      { key:"Rent",      label:"Renta",            plan: leerNumero("planRent"),      real: leerNumero("rent") },
+      { key:"Services",  label:"Servicios",        plan: leerNumero("planServices"),  real: leerNumero("services") },
+      { key:"Groceries", label:"Despensa",         plan: leerNumero("planGroceries"), real: leerNumero("groceries") },
+      { key:"Subs",      label:"Suscripciones",    plan: leerNumero("planSubs"),      real: suscripciones },
+      { key:"Fun",       label:"Diversión",        plan: leerNumero("planFun"),       real: diversion },
+      { key:"Personal",  label:"Cuidado personal", plan: leerNumero("planPersonal"),  real: personal }
+    ];
+    let bgtPlanTotal = 0, bgtRealTotal = 0;
+    const bgtDesv = [];
+    bgtCats.forEach(c => {
+      bgtPlanTotal += c.plan; bgtRealTotal += c.real;
+      const diff = c.plan - c.real; // + = por debajo del plan (bien)
+      const st = estadoPresupuesto(c.plan, c.real);
+      txt("bgtReal" + c.key, dinero(c.real));
+      const diffEl = $("bgtDiff" + c.key);
+      if(diffEl){ diffEl.textContent = (diff >= 0 ? "+" : "−") + dinero(Math.abs(diff)); diffEl.style.color = diff >= 0 ? "var(--good)" : "var(--bad)"; }
+      const stEl = $("bgtStatus" + c.key);
+      if(stEl) stEl.innerHTML = `<span class="bgtBadge ${st.cls}">${st.label}</span>`;
+      bgtDesv.push({ label:c.label, plan:c.plan, real:c.real, diff, over: c.real - c.plan });
+    });
+    const bgtDiffTotal = bgtPlanTotal - bgtRealTotal;
+    txt("bgtPlanTotal", dinero(bgtPlanTotal));
+    txt("bgtRealTotal", dinero(bgtRealTotal));
+    const bgtDiffTotalEl = $("bgtDiffTotal");
+    if(bgtDiffTotalEl){ bgtDiffTotalEl.textContent = (bgtDiffTotal >= 0 ? "+" : "−") + dinero(Math.abs(bgtDiffTotal)); bgtDiffTotalEl.style.color = bgtDiffTotal >= 0 ? "var(--good)" : "var(--bad)"; }
+    const bgtStT = estadoPresupuesto(bgtPlanTotal, bgtRealTotal);
+    const bgtStTEl = $("bgtStatusTotal");
+    if(bgtStTEl) bgtStTEl.innerHTML = `<span class="bgtBadge ${bgtStT.cls}">${bgtStT.label}</span>`;
+    txt("bgtHeadTag", (bgtDiffTotal >= 0 ? "+" : "−") + dinero(Math.abs(bgtDiffTotal)) + " vs plan");
+
+    const bgtOver = bgtDesv.filter(x => x.over > 0).sort((a,b) => b.over - a.over);
+    const bgtUnder = bgtDesv.filter(x => x.over < 0).sort((a,b) => a.over - b.over);
+    let bgtResumen = `Plan <b>${dinero(bgtPlanTotal)}</b> · Real <b>${dinero(bgtRealTotal)}</b>. `;
+    bgtResumen += bgtDiffTotal >= 0
+      ? `Vas <b>${dinero(bgtDiffTotal)}</b> por debajo del plan. `
+      : `Te pasaste <b>${dinero(-bgtDiffTotal)}</b> del plan. `;
+    if(bgtOver.length) bgtResumen += `Más excedido: <b>${bgtOver[0].label}</b> (+${dinero(bgtOver[0].over)}). `;
+    if(bgtUnder.length) bgtResumen += `Mejor ahorro: <b>${bgtUnder[0].label}</b> (${dinero(-bgtUnder[0].over)} bajo plan).`;
+    const bgtResumenEl = $("bgtResumen");
+    if(bgtResumenEl) bgtResumenEl.innerHTML = bgtResumen;
+
+    const budget = { planTotal:bgtPlanTotal, realTotal:bgtRealTotal, diffTotal:bgtDiffTotal, cats:bgtDesv, over:bgtOver, under:bgtUnder };
+
     // ---- Datos para la vista de reporte (impresión / PDF) ----
     const rPrevKey  = mesAnteriorKey(mesActivo);
     const rPrevData = store.months[rPrevKey];
@@ -2147,6 +2376,7 @@
       cmpEmptyMsg: rPrevData ? "" : `Aún no hay datos de ${nombreMes(rPrevKey)}. Guarda ese mes para incluir la comparación en el reporte.`
     };
     repData.insight = insightDelMes(repData);
+    repData.budget = budget;
     repData.insights = generarInsights(repData);
     renderInsights(repData.insights);
     renderReporte(repData);

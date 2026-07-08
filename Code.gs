@@ -46,7 +46,7 @@ function doGet(e) {
 
     // por defecto: todos los meses + marcas de tiempo
     var all = readAll_();
-    return json_({ ok: true, months: all.months, updatedAt: all.updatedAt });
+    return json_({ ok: true, months: all.months, updatedAt: all.updatedAt, dupes: all.dupes });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   }
@@ -138,6 +138,22 @@ function rowIndexForMonth_(sh, month) {
   return -1;
 }
 
+// Borra filas duplicadas del mismo mes, conservando keepRow
+function dedupeRows_(sh, month, keepRow) {
+  var target = normMonth_(month);
+  var last = sh.getLastRow();
+  if (last < 2) return;
+  var col = sh.getRange(2, 1, last - 1, 1).getValues();
+  var toDelete = [];
+  for (var i = 0; i < col.length; i++) {
+    var r = i + 2;
+    if (r === keepRow) continue;
+    if (normMonth_(col[i][0]) === target) toDelete.push(r);
+  }
+  toDelete.sort(function (a, b) { return b - a; }); // borrar de abajo hacia arriba
+  toDelete.forEach(function (r) { sh.deleteRow(r); });
+}
+
 function writeMonth_(month, data) {
   var lock = LockService.getScriptLock();
   lock.tryLock(20000);
@@ -157,6 +173,7 @@ function writeMonth_(month, data) {
     if (r === -1) r = sh.getLastRow() + 1;
     sh.getRange(r, 1).setNumberFormat('@'); // fuerza la celda "mes" como texto
     sh.getRange(r, 1, 1, hdr.length).setValues([rowVals]);
+    dedupeRows_(sh, m, r); // elimina filas duplicadas del mismo mes
     return updatedAt;
   } finally {
     lock.releaseLock();
@@ -175,18 +192,27 @@ function readAll_() {
   var sh = sheet_();
   var last = sh.getLastRow();
   var hdr = headers_(sh);
-  var months = {}, updatedAt = {};
-  if (last < 2) return { months: months, updatedAt: updatedAt };
+  var months = {}, updatedAt = {}, dupes = {};
+  if (last < 2) return { months: months, updatedAt: updatedAt, dupes: dupes };
   var uIdx = hdr.indexOf('updatedAt');
   var vals = sh.getRange(2, 1, last - 1, hdr.length).getValues();
   vals.forEach(function (row) {
     var m = normMonth_(row[0]);
-    if (m) {
+    if (!m) return;
+    var u = (uIdx >= 0 && row[uIdx]) ? String(row[uIdx]) : '';
+    if (months[m] === undefined) {
       months[m] = rowToObj_(hdr, row);
-      updatedAt[m] = (uIdx >= 0 && row[uIdx]) ? String(row[uIdx]) : '';
+      updatedAt[m] = u;
+    } else {
+      // Fila duplicada del mismo mes: conserva la de updatedAt más reciente
+      dupes[m] = (dupes[m] || 1) + 1;
+      if (u && (!updatedAt[m] || u > updatedAt[m])) {
+        months[m] = rowToObj_(hdr, row);
+        updatedAt[m] = u;
+      }
     }
   });
-  return { months: months, updatedAt: updatedAt };
+  return { months: months, updatedAt: updatedAt, dupes: dupes };
 }
 
 function listMonths_() {
